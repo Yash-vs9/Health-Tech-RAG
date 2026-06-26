@@ -183,6 +183,29 @@ Open **http://localhost:3000**
 
 ---
 
+## RAGAS Evaluation
+
+Run the evaluation script to test pipeline quality:
+
+```bash
+python -m tests.evaluation.evaluate
+```
+
+**Metrics:**
+| Metric | Target | What It Measures |
+|--------|--------|------------------|
+| Faithfulness | > 0.8 | Answer grounded in retrieved context |
+| Answer Relevancy | > 0.75 | Answer addresses the question |
+| Context Precision | > 0.7 | Retrieved chunks are relevant |
+
+**Output:** Report saved to `docs/eval_report.md`
+
+**Golden datasets:**
+- `tests/evaluation/golden_set_lakshya.json` — 5 edge case / unanswerable pairs
+- `tests/evaluation/tejasva_golden_set.json` — 5 citation-grounded pairs
+
+---
+
 ## Team Contributions
 
 | Member | Branch | What They Built |
