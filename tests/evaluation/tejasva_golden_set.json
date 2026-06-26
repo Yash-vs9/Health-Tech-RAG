@@ -1,0 +1,52 @@
+[
+  {
+    "question_id": "TJV_Q001",
+    "question": "What are the symptoms of Type 2 diabetes?",
+    "expected_answer": "Common symptoms include increased thirst, frequent urination, fatigue, and blurred vision.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 12,
+    "question_type": "multi_hop",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW"
+  },
+  {
+    "question_id": "TJV_Q002",
+    "question": "How does diabetes affect the kidneys?",
+    "expected_answer": "Diabetes can cause kidney damage (nephropathy) as a complication of prolonged high blood sugar.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 13,
+    "question_type": "multi_hop",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW"
+  },
+  {
+    "question_id": "TJV_Q003",
+    "question": "What screening is recommended for adults with diabetes risk factors?",
+    "expected_answer": "Regular screening is recommended for adults with risk factors and family history.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 14,
+    "question_type": "factual",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW"
+  },
+  {
+    "question_id": "TJV_Q004",
+    "question": "What dietary changes help manage blood sugar?",
+    "expected_answer": "Balanced meals, portion control, and limiting high-sugar foods can help manage blood sugar levels.",
+    "source_doc": "medical_report.pdf",
+    "source_page": 8,
+    "question_type": "factual",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW"
+  },
+  {
+    "question_id": "TJV_Q005",
+    "question": "What is the recommended daily water intake for adults?",
+    "expected_answer": "I don't have that information in the provided documents.",
+    "source_doc": "N/A",
+    "source_page": 0,
+    "question_type": "edge_case",
+    "answerability": "FALSE",
+    "hallucination_risk": "HIGH"
+  }
+]
