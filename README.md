@@ -8,35 +8,35 @@
 ## Pipeline Architecture
 
 ```
-User Upload (PDF)
-       |
-       v
-  POST /ingest  -->  PyMuPDF Loader  -->  Text Splitter (512/50)  -->  Embeddings
-                                                                        |
-                                                              +---------+---------+
-                                                              |                   |
-                                                        EMBEDDING_PROVIDER    EMBEDDING_PROVIDER
-                                                          = local               = api
-                                                    MiniLM-L6-v2          Qwen3-Embedding-8B
-                                                              |                   |
-                                                              +---------+---------+
-                                                                        |
-                                                                        v
-                                                              ChromaDB Vector Store
-                                                                        |
-                                                                        v
+User Upload (PDF / DOCX)
+         |
+         v
+    POST /ingest  -->  Document Loader  -->  Text Splitter (512/50)  -->  Embeddings
+                                                                          |
+                                                                +---------+---------+
+                                                                |                   |
+                                                          EMBEDDING_PROVIDER    EMBEDDING_PROVIDER
+                                                            = local               = api
+                                                      MiniLM-L6-v2          Qwen3-Embedding-8B
+                                                                |                   |
+                                                                +---------+---------+
+                                                                          |
+                                                                          v
+                                                                ChromaDB Vector Store
+                                                                          |
+                                                                          v
 User Question  -->  POST /query  -->  Retriever (k=5)  -->  LLM  -->  Answer + Sources
-                                                                        |
-                                                              +---------+---------+
-                                                              |                   |
-                                                          LLM_PROVIDER        LLM_PROVIDER
-                                                            = ollama             = gemini
-                                                          llama3.2           gemini-2.5-flash-lite
-                                                              |                   |
-                                                              +---------+---------+
-                                                                        |
-                                                                        v
-                                                                  Response to UI
+                                                                          |
+                                                                +---------+---------+
+                                                                |                   |
+                                                            LLM_PROVIDER        LLM_PROVIDER
+                                                              = ollama             = gemini
+                                                            llama3.2           gemini-2.5-flash-lite
+                                                                |                   |
+                                                                +---------+---------+
+                                                                          |
+                                                                          v
+                                                                    React Frontend
 ```
 
 ---
@@ -54,21 +54,29 @@ Health-Tech-RAG/
 │       ├── llm.py               # LLM provider (Ollama / Gemini)
 │       ├── embeddings.py        # Embedding provider (local / API)
 │       ├── vectorstore.py       # ChromaDB integration
-│       ├── ingestion.py         # PDF → chunk → embed → store
-│       └── query_engine.py      # RAG: retrieve context → LLM answer
-├── frontend/src/components/
-│   ├── ChatMessage.jsx          # Chat message bubble
-│   └── CitationPanel.jsx        # Source citations panel
+│       ├── ingestion.py         # PDF + DOCX → chunk → embed → store
+│       └── query_engine.py      # RAG: retrieve context → LLM → answer
+├── frontend/                    # React app (Vite)
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx              # Main app — upload + chat
+│       ├── App.css
+│       ├── api.js               # API client
+│       └── components/
+│           ├── FileUpload.jsx   # Drag-and-drop upload
+│           ├── ChatMessage.jsx  # Chat message bubble
+│           └── CitationPanel.jsx # Source citations
 ├── prompts/
-│   ├── health_system_prompt.txt # Health domain system prompt
-│   └── ananya_prompt_test.py    # Gemini prompt test script
+│   ├── health_system_prompt.txt
+│   └── ananya_prompt_test.py
 ├── tests/
-│   ├── backend/test_api.py      # API endpoint tests
+│   ├── backend/test_api.py
 │   └── evaluation/
-│       ├── golden_set_lakshya.json   # 5 edge case pairs
-│       └── tejasva_golden_set.json   # 5 citation-grounded pairs
 ├── data/
-│   ├── uploaded_pdfs/           # Ingested PDFs
+│   ├── uploaded_pdfs/           # Uploaded documents
 │   └── chroma_db/               # Persistent ChromaDB
 ├── requirements.txt
 ├── .env.example
@@ -79,7 +87,7 @@ Health-Tech-RAG/
 
 ## Quick Start
 
-### 1. Clone and Setup
+### 1. Backend Setup
 
 ```bash
 git clone https://github.com/<org>/Health-Tech-RAG.git
@@ -95,7 +103,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` — **minimal config for local setup (no API keys needed):**
+Minimal local config (no API keys needed):
 
 ```env
 LLM_PROVIDER=ollama
@@ -110,13 +118,21 @@ LOCAL_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ollama pull llama3.2
 ```
 
-### 4. Run the API
+### 4. Start Backend
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
-Open **http://localhost:8000/docs** — test via Swagger UI.
+### 5. Start Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://localhost:3000**
 
 ---
 
@@ -127,73 +143,36 @@ Open **http://localhost:8000/docs** — test via Swagger UI.
 | `LLM_PROVIDER` | Model | Requires | Cost |
 |----------------|-------|----------|------|
 | `ollama` | llama3.2 | Ollama installed locally | Free |
-| `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier available |
+| `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier |
 
 ### Embedding Provider
 
 | `EMBEDDING_PROVIDER` | Model | Requires | Cost |
 |----------------------|-------|----------|------|
-| `local` | all-MiniLM-L6-v2 | Downloads ~80MB on first run | Free |
-| `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier available |
+| `local` | all-MiniLM-L6-v2 | Downloads ~80MB first run | Free |
+| `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
-**Rule:** Never mix embedding models — use the same model for indexing AND querying.
+**Rule:** Never mix embedding models — use the same for indexing AND querying.
 
 ---
 
 ## API Endpoints
 
-### `GET /health`
+| Endpoint | Method | Accepts | Description |
+|----------|--------|---------|-------------|
+| `/health` | GET | — | Health check + provider info |
+| `/ingest` | POST | `.pdf` or `.docx` | Upload document → chunk → embed → store |
+| `/query` | POST | JSON `{question, doc_ids}` | RAG query → answer + sources |
 
-```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "chromadb": "connected (47 chunks)",
-  "llm": "ollama",
-  "embeddings": "local"
-}
-```
+---
 
-### `POST /ingest`
+## Frontend Features
 
-Upload a PDF → parse → chunk → embed → store.
-
-**Request:** `multipart/form-data` with file field `file`
-
-**Response:**
-```json
-{
-  "doc_id": "a1b2c3d4e5f6",
-  "filename": "who_guidelines.pdf",
-  "num_chunks": 47,
-  "status": "success"
-}
-```
-
-### `POST /query`
-
-Ask a question → retrieve context → generate answer.
-
-**Request:**
-```json
-{
-  "question": "What are the symptoms of diabetes?",
-  "doc_ids": ["a1b2c3d4e5f6"]
-}
-```
-
-**Response:**
-```json
-{
-  "answer": "Common symptoms include increased thirst, frequent urination...",
-  "sources": [
-    {
-      "content": "Diabetes mellitus is characterized by...",
-      "metadata": {"source": "who_guidelines.pdf", "page": 12, "doc_id": "a1b2c3d4e5f6"}
-    }
-  ]
-}
-```
+- **File Upload** — drag-and-drop or click to browse, accepts PDF and DOCX
+- **Chat Interface** — ask questions about uploaded documents
+- **Citation Panel** — expandable source chunks for each answer
+- **Document List** — shows ingested documents with IDs
+- **Auto-scroll** — chat scrolls to latest message
 
 ---
 
@@ -201,13 +180,13 @@ Ask a question → retrieve context → generate answer.
 
 | Member | Branch | What They Built |
 |--------|--------|-----------------|
-| Lakshya | `feat/lakshya-fastapi` | FastAPI backend, ChromaDB integration, ingestion, query engine |
-| Soojal | `feat/soojal-chromadb` | ChromaDB collection setup, sample test data |
-| Yash | `feat/yash-ingestion` | PDF ingestion pipeline (PyMuPDF + chunking + embedding) |
-| Aryan | `feat/aryan-retriever` | Retriever config (k=5), QA chain, Groq LLM integration |
-| Tejasva | `feat/tejasva-multiquery` | React components (ChatMessage, CitationPanel), tests, prompts |
-| Isha | `feat/isha-embeddings` | Embedding model testing (Qwen3-Embedding-8B) |
-| Ananya | `feat/ananya-system-prompt` | Health system prompt, Gemini prompt test |
+| Lakshya | `feat/lakshya-fastapi` | FastAPI backend, ChromaDB, ingestion, query engine |
+| Soojal | `feat/soojal-chromadb` | ChromaDB collection setup |
+| Yash | `feat/yash-ingestion` | PDF ingestion pipeline |
+| Aryan | `feat/aryan-retriever` | Retriever config, QA chain |
+| Tejasva | `feat/tejasva-multiquery` | React components, tests, prompts |
+| Isha | `feat/isha-embeddings` | Embedding model testing |
+| Ananya | `feat/ananya-system-prompt` | System prompt, Gemini test |
 
 ---
 

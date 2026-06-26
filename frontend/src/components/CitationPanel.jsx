@@ -1,25 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export function CitationPanel({ sources = [] }) {
-  if (!sources.length) {
-    return <div className="citation-panel empty">No sources returned.</div>;
-  }
+export default function CitationPanel({ sources }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="citation-panel">
-      <details>
-        <summary>Sources</summary>
-        <ul>
-          {sources.map((source, index) => (
-            <li key={`${source.doc_id}-${index}`}>
-              <strong>{source.doc_id}</strong>
-              {source.page !== null && source.page !== undefined ? `, page ${source.page}` : ''}
-              {source.section ? `, ${source.section}` : ''}
-              <div>{source.text}</div>
+      <button className="citation-toggle" onClick={() => setOpen(!open)}>
+        Sources ({sources.length}) {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <ul className="citation-list">
+          {sources.map((source, i) => (
+            <li key={i} className="citation-item">
+              <span className="citation-doc">{source.metadata?.filename || source.metadata?.doc_id || 'Unknown'}</span>
+              {source.metadata?.page !== undefined && (
+                <span className="citation-page">, page {source.metadata.page}</span>
+              )}
+              <p className="citation-text">{source.content}</p>
             </li>
           ))}
         </ul>
-      </details>
+      )}
     </div>
   );
 }

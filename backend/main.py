@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from backend.schemas import (
@@ -11,6 +12,8 @@ from backend.schemas import (
     SourceChunk,
 )
 from backend.services import ingestion, query_engine, vectorstore
+
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 app = FastAPI(
     title="Health RAG API",
@@ -31,8 +34,8 @@ app.add_middleware(
 async def health_check():
     try:
         count = vectorstore.get_doc_count()
-        llm_provider = __import__("os").getenv("LLM_PROVIDER", "ollama")
-        embed_provider = __import__("os").getenv("EMBEDDING_PROVIDER", "local")
+        llm_provider = os.getenv("LLM_PROVIDER", "ollama")
+        embed_provider = os.getenv("EMBEDDING_PROVIDER", "local")
         return HealthResponse(
             status="ok",
             version="1.0.0",
@@ -52,12 +55,13 @@ async def health_check():
 
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Only PDF and DOCX files are accepted. Got: {ext}")
 
     try:
         file_bytes = await file.read()
-        result = ingestion.ingest_pdf(file_bytes=file_bytes, filename=file.filename)
+        result = ingestion.ingest_document(file_bytes=file_bytes, filename=file.filename)
         return IngestResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
