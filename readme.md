@@ -15,17 +15,34 @@ Each team member works on their own feature branch. Once complete, branches are 
 
 | Branch | Owner | Task | Status |
 |--------|-------|------|--------|
-| `feat/lakshya-fastapi` | Lakshya | FastAPI Backend (3 endpoints) | In Progress |
-| `feat/aryan-retriever` | Aryan | LangChain Retriever + ChromaDB Config | In Progress |
-| `feat/yash-ingestion` | Yash | PDF Ingestion Pipeline | In Progress |
+| `feat/yash-ingestion` | Yash | PDF Ingestion Pipeline (Load → Chunk → Embed → Store) | In Progress |
+| `feat/soojal-chromadb` | Soojal | ChromaDB Collection Setup + Metadata Schema | In Progress |
+| `feat/aryan-retriever` | Aryan | LangChain RetrievalQA + ChromaDB Retriever Config | In Progress |
+| `feat/tejasva-multiquery` | Tejasva | Multi-Query Retrieval + React UI Bridge | In Progress |
+| `feat/lakshya-fastapi` | Lakshya | FastAPI Backend (3 Core Endpoints) | In Progress |
+| `feat/isha-embeddings` | Isha | Embedding Model Testing + Chunk Size Tuning | In Progress |
+| `feat/ananya-system-prompt` | Ananya | System Prompt Engineering for Health Domain | In Progress |
+
+**Branches not yet created:**
+- Aakanksha — Document Cleaning + Chunking + React Upload UI
+- Nua — RAGAS Evaluation Setup + Golden Dataset Merge
+- UI Team — Streamlit/React UI Components
 
 ### How Merging Works
 
 ```
-feat/yash-ingestion (PDF Load + Chunk + Embed)
+feat/soojal-chromadb (ChromaDB Collection)
+         |
+feat/yash-ingestion (PDF Ingestion + Embeddings)
          |
          v
 feat/aryan-retriever (Retriever + QA Chain)
+         |
+feat/tejasva-multiquery (Multi-Query Retrieval)
+         |
+feat/isha-embeddings (Embedding Testing)
+         |
+feat/ananya-system-prompt (System Prompts)
          |
          v
 feat/lakshya-fastapi (FastAPI Endpoints)
@@ -35,9 +52,13 @@ feat/lakshya-fastapi (FastAPI Endpoints)
 ```
 
 **Merge Order (respects team dependency):**
-1. `feat/yash-ingestion` — PDF ingestion pipeline (no upstream deps)
-2. `feat/aryan-retriever` — Retriever config (depends on ingestion)
-3. `feat/lakshya-fastapi` — API layer (depends on retriever + ingestion)
+1. `feat/soojal-chromadb` — ChromaDB collection setup (no upstream deps)
+2. `feat/yash-ingestion` — PDF ingestion pipeline (depends on ChromaDB)
+3. `feat/aryan-retriever` — Retriever config (depends on ingestion + embeddings)
+4. `feat/tejasva-multiquery` — Multi-query retrieval (depends on retriever)
+5. `feat/isha-embeddings` — Embedding testing (can merge anytime, validates models)
+6. `feat/ananya-system-prompt` — System prompts (can merge anytime, improves output)
+7. `feat/lakshya-fastapi` — API layer (depends on retriever + ingestion — merges last)
 
 After all merges, `main` contains the complete, runnable system.
 
@@ -125,7 +146,19 @@ Health-Tech-RAG/
 
 ## Team Branch Workflow
 
-### For Each Team Member:
+### Already Created Branches (7/10)
+
+| Member | Branch | Task |
+|--------|--------|------|
+| Yash | `feat/yash-ingestion` | PDF Ingestion Pipeline |
+| Soojal | `feat/soojal-chromadb` | ChromaDB Collection Setup |
+| Aryan | `feat/aryan-retriever` | Retriever + QA Chain |
+| Tejasva | `feat/tejasva-multiquery` | Multi-Query Retrieval |
+| Lakshya | `feat/lakshya-fastapi` | FastAPI Backend |
+| Isha | `feat/isha-embeddings` | Embedding Testing |
+| Ananya | `feat/ananya-system-prompt` | System Prompts |
+
+### For Remaining Team Members (Aakanksha, Nua, UI Team):
 
 1. **Pull latest main** before starting work
    ```bash
