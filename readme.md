@@ -15,6 +15,7 @@ Each team member works on their own feature branch. Once complete, branches are 
 
 | Branch | Owner | Task | Status |
 |--------|-------|------|--------|
+| `feat/tejasva-multiquery` | Tejasva Chadha | Multi-query retrieval + UI bridge | In Progress |
 | `feat/lakshya-fastapi` | Lakshya | FastAPI Backend (3 endpoints) | In Progress |
 | `feat/aryan-retriever` | Aryan | LangChain Retriever + ChromaDB Config | In Progress |
 | `feat/yash-ingestion` | Yash | PDF Ingestion Pipeline | In Progress |
@@ -22,6 +23,9 @@ Each team member works on their own feature branch. Once complete, branches are 
 ### How Merging Works
 
 ```
+feat/tejasva-multiquery (Multi-query retrieval + citations)
+         |
+         v
 feat/yash-ingestion (PDF Load + Chunk + Embed)
          |
          v
@@ -37,7 +41,8 @@ feat/lakshya-fastapi (FastAPI Endpoints)
 **Merge Order (respects team dependency):**
 1. `feat/yash-ingestion` — PDF ingestion pipeline (no upstream deps)
 2. `feat/aryan-retriever` — Retriever config (depends on ingestion)
-3. `feat/lakshya-fastapi` — API layer (depends on retriever + ingestion)
+3. `feat/tejasva-multiquery` — Multi-query retrieval and UI bridge (depends on retriever)
+4. `feat/lakshya-fastapi` — API layer (depends on retriever + ingestion)
 
 After all merges, `main` contains the complete, runnable system.
 
