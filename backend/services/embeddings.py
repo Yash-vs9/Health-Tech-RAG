@@ -24,7 +24,7 @@ def get_embeddings():
             huggingfacehub_api_token=token,
         )
     else:
-        from langchain_community.embeddings import HuggingFaceEmbeddings
+        from langchain_huggingface import HuggingFaceEmbeddings
         model = os.getenv("LOCAL_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
         _embeddings = HuggingFaceEmbeddings(model_name=model)
 
