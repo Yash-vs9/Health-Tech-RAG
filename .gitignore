@@ -7,6 +7,7 @@ __pycache__/
 # Data
 data/uploaded_pdfs/
 data/chroma_db/
+chroma_db/
 
 # IDE
 .vscode/
