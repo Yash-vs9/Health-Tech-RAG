@@ -185,11 +185,29 @@ Open **http://localhost:3000**
 
 ## RAGAS Evaluation
 
-Run the evaluation script to test pipeline quality:
+**Structure:**
+```
+tests/evaluation/
+├── documents/        ← Upload mortgage PDFs/DOCXs here
+├── golden_datasets/  ← Golden dataset JSONs from team members
+└── evaluate.py       ← Evaluation script
+```
+
+**Steps:**
+1. Upload mortgage documents to `tests/evaluation/documents/`
+2. Add golden dataset JSONs to `tests/evaluation/golden_datasets/`
+3. Run evaluation:
 
 ```bash
 python -m tests.evaluation.evaluate
 ```
+
+**What it does:**
+1. Ingests all docs from `documents/`
+2. Loads all Q&A pairs from `golden_datasets/`
+3. Runs RAG pipeline on each question
+4. Evaluates with RAGAS metrics
+5. Saves report to `docs/eval_report.md`
 
 **Metrics:**
 | Metric | Target | What It Measures |
@@ -197,12 +215,6 @@ python -m tests.evaluation.evaluate
 | Faithfulness | > 0.8 | Answer grounded in retrieved context |
 | Answer Relevancy | > 0.75 | Answer addresses the question |
 | Context Precision | > 0.7 | Retrieved chunks are relevant |
-
-**Output:** Report saved to `docs/eval_report.md`
-
-**Golden datasets:**
-- `tests/evaluation/golden_set_lakshya.json` — 5 edge case / unanswerable pairs
-- `tests/evaluation/tejasva_golden_set.json` — 5 citation-grounded pairs
 
 ---
 
