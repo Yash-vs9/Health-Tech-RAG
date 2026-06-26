@@ -31,16 +31,22 @@ app.add_middleware(
 async def health_check():
     try:
         count = vectorstore.get_doc_count()
+        llm_provider = __import__("os").getenv("LLM_PROVIDER", "ollama")
+        embed_provider = __import__("os").getenv("EMBEDDING_PROVIDER", "local")
         return HealthResponse(
             status="ok",
             version="1.0.0",
-            chromadb=f"connected ({count} docs)",
+            chromadb=f"connected ({count} chunks)",
+            llm=llm_provider,
+            embeddings=embed_provider,
         )
     except Exception as e:
         return HealthResponse(
             status="degraded",
             version="1.0.0",
             chromadb=f"error: {str(e)}",
+            llm="unknown",
+            embeddings="unknown",
         )
 
 

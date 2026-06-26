@@ -1,32 +1,42 @@
-# Health Tech RAG Chatbot — Full Pipeline Setup Guide
+# Health Tech RAG Chatbot
 
 > GenAI-based AI Chatbot for Document Q&A (Health Tech Domain)
 > AIforAll Global — International AI Internship | Week 2 — June 2026
 
 ---
 
-## About This Branch
-
-This is the **main** branch — the integration branch where all feature branches are merged to form the **working end-to-end pipeline**.
-
----
-
-## Architecture Overview
+## Pipeline Architecture
 
 ```
 User Upload (PDF)
        |
        v
-  POST /ingest  -->  PyMuPDF Loader  -->  Text Splitter (512/50)  -->  Embeddings (MiniLM-L6-v2)
+  POST /ingest  -->  PyMuPDF Loader  -->  Text Splitter (512/50)  -->  Embeddings
+                                                                        |
+                                                              +---------+---------+
+                                                              |                   |
+                                                        EMBEDDING_PROVIDER    EMBEDDING_PROVIDER
+                                                          = local               = api
+                                                    MiniLM-L6-v2          Qwen3-Embedding-8B
+                                                              |                   |
+                                                              +---------+---------+
                                                                         |
                                                                         v
                                                               ChromaDB Vector Store
                                                                         |
                                                                         v
-User Question  -->  POST /query  -->  Retriever (k=5)  -->  LLM (Ollama)  -->  Answer + Sources
-                                                                                    |
-                                                                                    v
-                                                                            React / Streamlit UI
+User Question  -->  POST /query  -->  Retriever (k=5)  -->  LLM  -->  Answer + Sources
+                                                                        |
+                                                              +---------+---------+
+                                                              |                   |
+                                                          LLM_PROVIDER        LLM_PROVIDER
+                                                            = ollama             = gemini
+                                                          llama3.2           gemini-2.5-flash-lite
+                                                              |                   |
+                                                              +---------+---------+
+                                                                        |
+                                                                        v
+                                                                  Response to UI
 ```
 
 ---
@@ -39,149 +49,165 @@ Health-Tech-RAG/
 │   ├── __init__.py
 │   ├── main.py                  # FastAPI app — 3 endpoints
 │   ├── schemas.py               # Pydantic request/response models
-│   ├── requirements.txt         # Backend-specific dependencies
 │   └── services/
 │       ├── __init__.py
-│       ├── vectorstore.py       # ChromaDB integration layer
+│       ├── llm.py               # LLM provider (Ollama / Gemini)
+│       ├── embeddings.py        # Embedding provider (local / API)
+│       ├── vectorstore.py       # ChromaDB integration
 │       ├── ingestion.py         # PDF → chunk → embed → store
-│       └── query_engine.py      # RAG retriever + LLM answer generation
-├── ingest.py                    # Yash's standalone ingestion pipeline
-├── data.py                      # Soojal's sample test data
-├── db_setup.py                  # Soojal's standalone ChromaDB setup
+│       └── query_engine.py      # RAG: retrieve context → LLM answer
+├── frontend/src/components/
+│   ├── ChatMessage.jsx          # Chat message bubble
+│   └── CitationPanel.jsx        # Source citations panel
+├── prompts/
+│   ├── health_system_prompt.txt # Health domain system prompt
+│   └── ananya_prompt_test.py    # Gemini prompt test script
 ├── tests/
+│   ├── backend/test_api.py      # API endpoint tests
 │   └── evaluation/
-│       └── golden_set_lakshya.json   # 5 edge case Q&A pairs
-├── docs/                        # Evaluation reports, embedding comparisons
-├── prompts/                     # System prompts (.txt files)
+│       ├── golden_set_lakshya.json   # 5 edge case pairs
+│       └── tejasva_golden_set.json   # 5 citation-grounded pairs
 ├── data/
-│   ├── uploaded_pdfs/           # Ingested PDFs stored here
-│   └── chroma_db/               # Persistent ChromaDB storage
-├── requirements.txt             # Root-level dependencies
-├── .env.example                 # Environment variable template
-└── README.md                    # This file
+│   ├── uploaded_pdfs/           # Ingested PDFs
+│   └── chroma_db/               # Persistent ChromaDB
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
-
----
-
-## Merged Feature Branches
-
-| Branch | Owner | Task | Merged |
-|--------|-------|------|--------|
-| `feat/lakshya-fastapi` | Lakshya | FastAPI Backend (3 endpoints) | Yes |
-| `feat/soojal-chromadb` | Soojal | ChromaDB Collection Setup | Yes |
-| `feat/yash-ingestion` | Yash | PDF Ingestion Pipeline | Yes |
-| `feat/aryan-retriever` | Aryan | Retriever + QA Chain | Pending |
-| `feat/tejasva-multiquery` | Tejasva | Multi-Query Retrieval | Pending |
-| `feat/isha-embeddings` | Isha | Embedding Testing | Pending |
-| `feat/ananya-system-prompt` | Ananya | System Prompts | Pending |
 
 ---
 
 ## Quick Start
 
+### 1. Clone and Setup
+
 ```bash
-# Clone main
 git clone https://github.com/<org>/Health-Tech-RAG.git
 cd Health-Tech-RAG
-
-# Setup
 python -m venv venv
 venv\Scripts\activate          # Windows
 pip install -r requirements.txt
+```
 
-# Pull LLM model
-ollama pull llama3.2
+### 2. Configure Environment
 
-# Configure
+```bash
 cp .env.example .env
+```
 
-# Run API server
+Edit `.env` — **minimal config for local setup (no API keys needed):**
+
+```env
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+EMBEDDING_PROVIDER=local
+LOCAL_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+```
+
+### 3. Pull Ollama Model
+
+```bash
+ollama pull llama3.2
+```
+
+### 4. Run the API
+
+```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
-Open **http://localhost:8000/docs** — test all endpoints via Swagger UI.
+Open **http://localhost:8000/docs** — test via Swagger UI.
+
+---
+
+## Configuration Options
+
+### LLM Provider
+
+| `LLM_PROVIDER` | Model | Requires | Cost |
+|----------------|-------|----------|------|
+| `ollama` | llama3.2 | Ollama installed locally | Free |
+| `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier available |
+
+### Embedding Provider
+
+| `EMBEDDING_PROVIDER` | Model | Requires | Cost |
+|----------------------|-------|----------|------|
+| `local` | all-MiniLM-L6-v2 | Downloads ~80MB on first run | Free |
+| `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier available |
+
+**Rule:** Never mix embedding models — use the same model for indexing AND querying.
 
 ---
 
 ## API Endpoints
 
-| Endpoint | Method | Description | Request | Response |
-|----------|--------|-------------|---------|----------|
-| `/health` | GET | Health check | — | `status`, `chromadb` connection info |
-| `/ingest` | POST | Upload PDF | multipart/form-data | `doc_id`, `filename`, `num_chunks` |
-| `/query` | POST | Ask question | `question` + `doc_ids` | `answer` + `sources` |
-
----
-
-## Ingestion Pipeline (Yash's Contribution)
-
-The standalone ingestion pipeline (`ingest.py`) handles:
-
-1. **PDF Loading** — `PyMuPDFLoader` extracts text + metadata
-2. **Chunking** — `RecursiveCharacterTextSplitter` (512 tokens, 50 overlap)
-3. **Embedding** — `HuggingFaceEndpointEmbeddings` (Qwen3-Embedding-8B via API)
-4. **Storage** — `Chroma.from_documents()` persists to local `chroma_db/`
-
-The FastAPI backend (`backend/services/ingestion.py`) provides the same pipeline integrated into the API via `POST /ingest`.
-
----
-
-## ChromaDB Setup (Soojal's Contribution)
-
-- Collection: `health_docs`
-- Distance: cosine similarity (`hnsw:space = cosine`)
-- Standalone setup: `db_setup.py`
-- Integrated in backend: `backend/services/vectorstore.py`
-
----
-
-## Pipeline Integration Guide
-
-### Aryan — Retriever + QA Chain
-- Retriever: `k=5`, `score_threshold=0.7`
-- Memory: `ConversationBufferMemory`
-- Source documents: `return_source_documents=True`
-- File: `backend/services/query_engine.py`
-
-### Tejasva — Multi-Query Retrieval
-- Use `MultiQueryRetriever` from LangChain
-- 3 query variants per question, merge results
-- Bridge to React via `/query` endpoint
-
-### Isha — Embedding Testing
-- Compare: MiniLM-L6-v2 vs BAAI/bge-large-en-v1.5
-- Test chunk sizes: 256 / 512 / 1024
-- Document findings in `docs/embedding_comparison.md`
-
-### UI Team — Frontend
-- Connect to FastAPI at `http://localhost:8000`
-- Upload: `POST /ingest` (multipart/form-data)
-- Query: `POST /query` (JSON)
-- Health: `GET /health`
-
-### Nua — RAGAS Evaluation
-- Merge all Q&A pairs into `tests/evaluation/golden_set.json`
-- Metrics: faithfulness (>0.8), answer_relevancy (>0.75), context_precision (>0.7)
-- Save to `docs/eval_report.md`
-
----
-
-## Golden Dataset Format
-
-Submit exactly **5 Q&A pairs** per member:
+### `GET /health`
 
 ```json
 {
-  "question_id": "Q001",
-  "question": "What are symptoms of Type 2 diabetes?",
-  "expected_answer": "Common symptoms include...",
-  "source_doc": "who_health_guidelines.pdf",
-  "source_page": 12,
-  "question_type": "factual",
-  "answerability": "TRUE",
-  "hallucination_risk": "LOW"
+  "status": "ok",
+  "version": "1.0.0",
+  "chromadb": "connected (47 chunks)",
+  "llm": "ollama",
+  "embeddings": "local"
 }
 ```
+
+### `POST /ingest`
+
+Upload a PDF → parse → chunk → embed → store.
+
+**Request:** `multipart/form-data` with file field `file`
+
+**Response:**
+```json
+{
+  "doc_id": "a1b2c3d4e5f6",
+  "filename": "who_guidelines.pdf",
+  "num_chunks": 47,
+  "status": "success"
+}
+```
+
+### `POST /query`
+
+Ask a question → retrieve context → generate answer.
+
+**Request:**
+```json
+{
+  "question": "What are the symptoms of diabetes?",
+  "doc_ids": ["a1b2c3d4e5f6"]
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "Common symptoms include increased thirst, frequent urination...",
+  "sources": [
+    {
+      "content": "Diabetes mellitus is characterized by...",
+      "metadata": {"source": "who_guidelines.pdf", "page": 12, "doc_id": "a1b2c3d4e5f6"}
+    }
+  ]
+}
+```
+
+---
+
+## Team Contributions
+
+| Member | Branch | What They Built |
+|--------|--------|-----------------|
+| Lakshya | `feat/lakshya-fastapi` | FastAPI backend, ChromaDB integration, ingestion, query engine |
+| Soojal | `feat/soojal-chromadb` | ChromaDB collection setup, sample test data |
+| Yash | `feat/yash-ingestion` | PDF ingestion pipeline (PyMuPDF + chunking + embedding) |
+| Aryan | `feat/aryan-retriever` | Retriever config (k=5), QA chain, Groq LLM integration |
+| Tejasva | `feat/tejasva-multiquery` | React components (ChatMessage, CitationPanel), tests, prompts |
+| Isha | `feat/isha-embeddings` | Embedding model testing (Qwen3-Embedding-8B) |
+| Ananya | `feat/ananya-system-prompt` | Health system prompt, Gemini prompt test |
 
 ---
 
@@ -193,21 +219,6 @@ Submit exactly **5 Q&A pairs** per member:
 4. **Commit daily** — no version control = risk
 5. **Test retrieval before building generation**
 6. **Target RAGAS faithfulness > 0.8 before Week 3**
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| API Framework | FastAPI |
-| RAG Framework | LangChain |
-| Vector Store | ChromaDB |
-| Embeddings | sentence-transformers/all-MiniLM-L6-v2 |
-| LLM | Ollama (llama3.2) |
-| PDF Loader | PyMuPDF |
-| Evaluation | RAGAS |
-| Frontend | React / Streamlit |
 
 ---
 

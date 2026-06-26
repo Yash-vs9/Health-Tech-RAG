@@ -1,20 +1,9 @@
 import os
 import uuid
-import tempfile
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from .embeddings import get_embeddings
 from . import vectorstore
-
-_model = None
-
-
-def get_embeddings():
-    global _model
-    if _model is None:
-        model_name = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-        _model = HuggingFaceEmbeddings(model_name=model_name)
-    return _model
 
 
 def ingest_pdf(file_bytes: bytes, filename: str) -> dict:

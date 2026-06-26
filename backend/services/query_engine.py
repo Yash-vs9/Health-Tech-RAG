@@ -1,12 +1,9 @@
-import os
-from langchain_community.llms import Ollama
-from langchain_core.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
-from langchain.memory import ConversationBufferMemory
-from . import vectorstore
+from __future__ import annotations
 
-_llm = None
-_qa_chain = None
+import os
+from langchain_core.prompts import PromptTemplate
+from .llm import get_llm
+from . import vectorstore
 
 SYSTEM_PROMPT = """You are a health information assistant.
 Answer only from the provided medical documents.
@@ -22,30 +19,6 @@ Context:
 
 Question: {question}
 Answer:"""
-
-
-def get_llm():
-    global _llm
-    if _llm is None:
-        temperature = float(os.getenv("LLM_TEMPERATURE", "0.0"))
-        _llm = Ollama(model="llama3.2", temperature=temperature)
-    return _llm
-
-
-def get_qa_chain(retriever):
-    global _qa_chain
-    if _qa_chain is None:
-        llm = get_llm()
-        prompt = PromptTemplate(template=SYSTEM_PROMPT, input_variables=["context", "question"])
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        _qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=retriever,
-            return_source_documents=True,
-            memory=memory,
-            chain_type_kwargs={"prompt": prompt},
-        )
-    return _qa_chain
 
 
 def query_rag(question: str, doc_ids: list[str] | None = None) -> dict:
@@ -72,8 +45,11 @@ def query_rag(question: str, doc_ids: list[str] | None = None) -> dict:
     context = "\n\n".join(results["documents"][0])
     llm = get_llm()
     prompt = PromptTemplate(template=SYSTEM_PROMPT, input_variables=["context", "question"])
-    response = prompt.format(context=context, question=question)
-    answer = llm.invoke(response)
+    filled = prompt.format(context=context, question=question)
+    answer = llm.invoke(filled)
+
+    if hasattr(answer, "content"):
+        answer = answer.content
 
     return {
         "answer": answer,

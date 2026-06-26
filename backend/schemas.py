@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
-from enum import Enum
+from typing import List
 
 
 class IngestResponse(BaseModel):
@@ -32,3 +31,5 @@ class HealthResponse(BaseModel):
     status: str = Field(default="ok", description="API health status")
     version: str = Field(default="1.0.0", description="API version")
     chromadb: str = Field(default="connected", description="ChromaDB connection status")
+    llm: str = Field(default="ollama", description="LLM provider")
+    embeddings: str = Field(default="local", description="Embedding provider")
