@@ -1,2 +1,5 @@
 .env
 .venv
+sample_pdf.docx
+sample_pdf.pdf
+chroma_db
