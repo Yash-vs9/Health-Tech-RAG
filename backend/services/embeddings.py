@@ -11,6 +11,7 @@ def get_embeddings():
         return _embeddings
 
     provider = os.getenv("EMBEDDING_PROVIDER", "local")
+    print(f"[embeddings] Loading provider: {provider}")
 
     if provider == "api":
         from langchain_huggingface import HuggingFaceEndpointEmbeddings
