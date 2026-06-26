@@ -1,8 +1,0 @@
-langchain
-langchain-community
-langchain-groq
-chromadb
-sentence-transformers
-groq
-pymupdf
-python-dotenv
