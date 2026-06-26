@@ -18,7 +18,7 @@ def get_client() -> chromadb.ClientAPI:
 def get_collection() -> chromadb.Collection:
     global _collection
     if _collection is None:
-        collection_name = os.getenv("CHROMA_COLLECTION", "health_docs")
+        collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
         client = get_client()
         _collection = client.get_or_create_collection(
             name=collection_name,

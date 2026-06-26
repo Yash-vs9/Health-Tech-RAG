@@ -15,7 +15,7 @@ class SourceChunk(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=1, description="User question about health documents")
+    question: str = Field(..., min_length=1, description="User question about mortgage documents")
     doc_ids: List[str] = Field(
         default_factory=list,
         description="List of doc_ids to search. Empty list = search all documents."

@@ -1,6 +1,6 @@
-# Health Tech RAG Chatbot
+# Mortgage RAG Chatbot
 
-> GenAI-based AI Chatbot for Document Q&A (Health Tech Domain)
+> RAG system for mortgage document Q&A, summarization, and cross-document comparison
 > AIforAll Global — International AI Internship | Week 2 — June 2026
 
 ---
@@ -161,7 +161,7 @@ Open **http://localhost:3000**
 | Endpoint | Method | Accepts | Description |
 |----------|--------|---------|-------------|
 | `/health` | GET | — | Health check + provider info |
-| `/ingest` | POST | `.pdf` or `.docx` | Upload document → chunk → embed → store |
+| `/ingest` | POST | `.pdf` or `.docx` | Upload mortgage doc → chunk → embed → store |
 | `/query` | POST | JSON `{question, doc_ids}` | RAG query → answer + sources |
 
 ---
@@ -169,10 +169,17 @@ Open **http://localhost:3000**
 ## Frontend Features
 
 - **File Upload** — drag-and-drop or click to browse, accepts PDF and DOCX
-- **Chat Interface** — ask questions about uploaded documents
+- **Chat Interface** — ask questions about uploaded mortgage documents
 - **Citation Panel** — expandable source chunks for each answer
 - **Document List** — shows ingested documents with IDs
 - **Auto-scroll** — chat scrolls to latest message
+
+## Use Cases
+
+- **Loan Officers** — quick lookup of loan terms, rates, and conditions across documents
+- **Compliance Teams** — verify RESPA disclosures, check regulatory adherence
+- **Cross-Document Comparison** — compare terms across multiple loan agreements
+- **Summarization** — get concise summaries of lengthy appraisal reports
 
 ---
 

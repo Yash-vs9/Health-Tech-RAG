@@ -16,8 +16,8 @@ from backend.services import ingestion, query_engine, vectorstore
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 app = FastAPI(
-    title="Health RAG API",
-    description="GenAI-based RAG Chatbot for Health Document Q&A",
+    title="Mortgage RAG API",
+    description="RAG system for mortgage document Q&A, summarization, and cross-document comparison",
     version="1.0.0",
 )
 

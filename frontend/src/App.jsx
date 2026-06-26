@@ -61,8 +61,8 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>Health RAG Chatbot</h1>
-        <p>Upload a PDF or DOCX, then ask questions about its content</p>
+        <h1>Mortgage RAG Chatbot</h1>
+        <p>Upload mortgage documents (PDF/DOCX), then ask questions about loan terms, compliance, and more</p>
       </header>
 
       <div className="sidebar">
@@ -84,7 +84,10 @@ export default function App() {
         <div className="messages">
           {messages.length === 0 && (
             <div className="empty-state">
-              <p>Upload a document and ask a question to get started.</p>
+              <p>Upload a mortgage document (PDF/DOCX) and ask a question to get started.</p>
+              <p style={{fontSize: '13px', color: '#bbb', marginTop: '8px'}}>
+                Try: "What are the RESPA disclosure requirements?" or "Summarize the loan terms"
+              </p>
             </div>
           )}
           {messages.map((msg, i) => (
@@ -99,7 +102,7 @@ export default function App() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a health question..."
+            placeholder="Ask about loan terms, RESPA, appraisal..."
             disabled={loading}
           />
           <button type="submit" disabled={loading || !input.trim()}>
