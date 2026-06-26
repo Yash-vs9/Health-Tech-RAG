@@ -4,8 +4,18 @@ RAGAS Evaluation Script for Mortgage RAG Pipeline.
 Usage:
     python -m tests.evaluation.evaluate
 
-Loads golden dataset, runs RAG pipeline, evaluates with RAGAS metrics.
-Saves report to docs/eval_report.md
+Structure:
+    tests/evaluation/
+    ├── documents/        ← Upload PDFs/DOCXs here (mortgage docs to ingest)
+    ├── golden_datasets/  ← Golden dataset JSONs from team members
+    └── evaluate.py       ← This script
+
+Flow:
+    1. Ingest all documents from documents/
+    2. Load all golden datasets from golden_datasets/
+    3. Run RAG pipeline on each question
+    4. Evaluate with RAGAS metrics
+    5. Save report to docs/eval_report.md
 """
 
 import json
@@ -21,24 +31,55 @@ from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision
 from datasets import Dataset
 
-from backend.services import query_engine, vectorstore
+from backend.services import ingestion, query_engine, vectorstore
 
 
-GOLDEN_DIR = Path("tests/evaluation")
+EVAL_DIR = Path("tests/evaluation")
+DOCS_DIR = EVAL_DIR / "documents"
+GOLDEN_DIR = EVAL_DIR / "golden_datasets"
 REPORT_DIR = Path("docs")
 
 
+def ingest_documents():
+    """Ingest all PDFs and DOCXs from documents/ folder."""
+    print("\n[1/5] Ingesting documents from tests/evaluation/documents/...")
+
+    files = list(DOCS_DIR.glob("*.pdf")) + list(DOCS_DIR.glob("*.docx"))
+    if not files:
+        print("  WARNING: No PDF or DOCX files found in documents/")
+        print("  Upload mortgage documents to: tests/evaluation/documents/")
+        return []
+
+    ingested = []
+    for f in files:
+        print(f"  Ingesting: {f.name}")
+        with open(f, "rb") as fh:
+            file_bytes = fh.read()
+        result = ingestion.ingest_document(file_bytes=file_bytes, filename=f.name)
+        ingested.append(result)
+        print(f"    → doc_id: {result['doc_id']}, chunks: {result['num_chunks']}")
+
+    print(f"  Total: {len(ingested)} documents ingested")
+    return ingested
+
+
 def load_golden_datasets() -> list[dict]:
-    """Load all golden_set_*.json files from tests/evaluation/."""
+    """Load all golden dataset JSONs from golden_datasets/ folder."""
+    print("\n[2/5] Loading golden datasets from tests/evaluation/golden_datasets/...")
+
     questions = []
-    for f in GOLDEN_DIR.glob("golden_set_*.json"):
+    files = list(GOLDEN_DIR.glob("*.json"))
+    if not files:
+        print("  WARNING: No golden dataset JSON files found")
+        return []
+
+    for f in files:
         with open(f) as fh:
             data = json.load(fh)
+            print(f"  Loaded: {f.name} ({len(data)} questions)")
             questions.extend(data)
-    for f in GOLDEN_DIR.glob("*_golden_set.json"):
-        with open(f) as fh:
-            data = json.load(fh)
-            questions.extend(data)
+
+    print(f"  Total: {len(questions)} questions")
     return questions
 
 
@@ -53,7 +94,9 @@ def run_rag(question: str) -> dict:
 
 
 def build_dataset(questions: list[dict]) -> Dataset:
-    """Run RAG on each question and build RAGAS dataset."""
+    """Run RAG on each answerable question and build RAGAS dataset."""
+    print("\n[3/5] Running RAG pipeline on answerable questions...")
+
     data = {
         "question": [],
         "answer": [],
@@ -61,13 +104,13 @@ def build_dataset(questions: list[dict]) -> Dataset:
         "ground_truth": [],
     }
 
-    for q in questions:
-        if q.get("answerability") == "FALSE":
-            continue
+    answerable = [q for q in questions if q.get("answerability") != "FALSE"]
+    skipped = len(questions) - len(answerable)
 
+    for q in answerable:
         question = q["question"]
         ground_truth = q["expected_answer"]
-        print(f"  Running: {question[:60]}...")
+        print(f"  Q: {question[:70]}...")
 
         rag_result = run_rag(question)
 
@@ -76,6 +119,7 @@ def build_dataset(questions: list[dict]) -> Dataset:
         data["contexts"].append(rag_result["contexts"])
         data["ground_truth"].append(ground_truth)
 
+    print(f"  Processed: {len(answerable)} answerable, skipped: {skipped} unanswerable")
     return Dataset.from_dict(data)
 
 
@@ -85,26 +129,26 @@ def run_evaluation():
     print("Mortgage RAG — RAGAS Evaluation")
     print("=" * 60)
 
-    # Load golden datasets
-    print("\n[1/4] Loading golden datasets...")
+    # Step 1: Ingest documents
+    ingested = ingest_documents()
+
+    # Step 2: Load golden datasets
     questions = load_golden_datasets()
-    total = len(questions)
-    answerable = sum(1 for q in questions if q.get("answerability") != "FALSE")
-    print(f"  Total questions: {total}")
-    print(f"  Answerable (for RAGAS): {answerable}")
-    print(f"  Unanswerable (refusal test): {total - answerable}")
 
-    # Run RAG pipeline
-    print("\n[2/4] Running RAG pipeline on answerable questions...")
-    dataset = build_dataset(questions)
-    print(f"  Collected {len(dataset)} question-answer pairs")
-
-    if len(dataset) == 0:
-        print("\n  No answerable questions found. Check golden dataset format.")
+    if not questions:
+        print("\nNo golden datasets found. Add JSON files to:")
+        print("  tests/evaluation/golden_datasets/")
         return
 
-    # Run RAGAS evaluation
-    print("\n[3/4] Running RAGAS evaluation...")
+    # Step 3: Build dataset by running RAG
+    dataset = build_dataset(questions)
+
+    if len(dataset) == 0:
+        print("\nNo answerable questions to evaluate.")
+        return
+
+    # Step 4: Run RAGAS evaluation
+    print("\n[4/5] Running RAGAS evaluation...")
     results = evaluate(
         dataset=dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
@@ -120,8 +164,8 @@ def run_evaluation():
     print(f"  Answer Relevancy:  {scores['answer_relevancy']:.3f}")
     print(f"  Context Precision: {scores['context_precision']:.3f}")
 
-    # Check targets
-    print("\n[4/4] Checking targets...")
+    # Step 5: Check targets and save report
+    print("\n[5/5] Checking targets...")
     targets = {"faithfulness": 0.8, "answer_relevancy": 0.75, "context_precision": 0.7}
     all_pass = True
     for metric, target in targets.items():
@@ -131,8 +175,7 @@ def run_evaluation():
         if not passed:
             all_pass = False
 
-    # Save report
-    save_report(scores, targets, all_pass, questions, dataset)
+    save_report(scores, targets, all_pass, questions, dataset, ingested)
 
     print(f"\n{'=' * 60}")
     print(f"Result: {'ALL TARGETS MET' if all_pass else 'SOME TARGETS MISSED'}")
@@ -140,7 +183,7 @@ def run_evaluation():
     print(f"{'=' * 60}")
 
 
-def save_report(scores: dict, targets: dict, all_pass: bool, questions: list, dataset):
+def save_report(scores, targets, all_pass, questions, dataset, ingested):
     """Save evaluation report to docs/eval_report.md."""
     REPORT_DIR.mkdir(exist_ok=True)
     report_path = REPORT_DIR / "eval_report.md"
@@ -154,15 +197,30 @@ def save_report(scores: dict, targets: dict, all_pass: bool, questions: list, da
         "# Mortgage RAG — Evaluation Report",
         "",
         f"**Date:** {timestamp}",
-        f"**Total Questions:** {total}",
-        f"**Answerable:** {answerable}",
-        f"**Unanswerable (refusal test):** {unanswerable}",
+        "",
+        "## Ingested Documents",
+        "",
+    ]
+
+    if ingested:
+        for doc in ingested:
+            lines.append(f"- **{doc['filename']}** — {doc['num_chunks']} chunks (ID: `{doc['doc_id']}`)")
+    else:
+        lines.append("- No documents were ingested")
+
+    lines.extend([
+        "",
+        "## Dataset Summary",
+        "",
+        f"- **Total questions:** {total}",
+        f"- **Answerable (evaluated):** {answerable}",
+        f"- **Unanswerable (refusal test):** {unanswerable}",
         "",
         "## RAGAS Scores",
         "",
         "| Metric | Score | Target | Status |",
         "|--------|-------|--------|--------|",
-    ]
+    ])
 
     for metric in ["faithfulness", "answer_relevancy", "context_precision"]:
         score = scores[metric]
