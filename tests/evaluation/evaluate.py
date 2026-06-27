@@ -21,6 +21,7 @@ Flow:
 import json
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -28,10 +29,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from ragas import evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_precision
+from ragas.metrics.collections import faithfulness, answer_relevancy, context_precision
 from datasets import Dataset
 
 from backend.services import ingestion, query_engine, vectorstore
+
+RATE_LIMIT_DELAY = 7  # seconds between LLM calls (free tier: ~10 req/min)
 
 
 EVAL_DIR = Path("tests/evaluation")
@@ -156,10 +159,10 @@ def build_dataset(questions: list[dict]) -> Dataset:
     answerable = [q for q in questions if q.get("answerability") != "FALSE"]
     skipped = len(questions) - len(answerable)
 
-    for q in answerable:
+    for i, q in enumerate(answerable):
         question = q["question"]
         ground_truth = q["expected_answer"]
-        print(f"  Q: {question[:70]}...")
+        print(f"  [{i+1}/{len(answerable)}] Q: {question[:70]}...")
 
         rag_result = run_rag(question)
 
@@ -167,6 +170,10 @@ def build_dataset(questions: list[dict]) -> Dataset:
         data["answer"].append(rag_result["answer"])
         data["contexts"].append(rag_result["contexts"])
         data["ground_truth"].append(ground_truth)
+
+        if i < len(answerable) - 1:
+            print(f"    waiting {RATE_LIMIT_DELAY}s (rate limit)...")
+            time.sleep(RATE_LIMIT_DELAY)
 
     print(f"  Processed: {len(answerable)} answerable, skipped: {skipped} unanswerable")
     return Dataset.from_dict(data)
