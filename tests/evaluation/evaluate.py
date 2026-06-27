@@ -44,8 +44,14 @@ REPORT_DIR = Path("docs")
 
 
 def ingest_documents():
-    """Ingest all PDFs and DOCXs from documents/ folder."""
-    print("\n[1/5] Ingesting documents from tests/evaluation/documents/...")
+    """Ingest all PDFs and DOCXs from documents/ folder. Skips if already ingested."""
+    print("\n[1/5] Checking documents...")
+
+    existing = vectorstore.get_doc_count()
+    if existing > 0:
+        print(f"  ChromaDB already has {existing} chunks — skipping ingestion")
+        print(f"  To re-ingest, delete data/chroma_db/ first")
+        return []
 
     files = list(DOCS_DIR.glob("*.pdf")) + list(DOCS_DIR.glob("*.docx"))
     if not files:
@@ -53,6 +59,7 @@ def ingest_documents():
         print("  Upload mortgage documents to: tests/evaluation/documents/")
         return []
 
+    print(f"  Found {len(files)} files to ingest:")
     ingested = []
     for f in files:
         print(f"  Ingesting: {f.name}")
@@ -60,9 +67,9 @@ def ingest_documents():
             file_bytes = fh.read()
         result = ingestion.ingest_document(file_bytes=file_bytes, filename=f.name)
         ingested.append(result)
-        print(f"    → doc_id: {result['doc_id']}, chunks: {result['num_chunks']}")
+        print(f"    -> doc_id: {result['doc_id']}, chunks: {result['num_chunks']}")
 
-    print(f"  Total: {len(ingested)} documents ingested")
+    print(f"  Total: {len(ingested)} documents ingested ({sum(i['num_chunks'] for i in ingested)} chunks)")
     return ingested
 
 
