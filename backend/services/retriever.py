@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 import numpy as np
-from langchain_core.prompts import PromptTemplate
+from langchain_core.documents import Document
+from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 from .llm import get_llm
 from . import vectorstore
 
@@ -11,7 +12,7 @@ from . import vectorstore
 # ---------------------------------------------------------------------------
 
 _bm25_index = None
-_bm25_docs: list[dict] = []  # [{id, content, metadata}]
+_bm25_docs: list[dict] = []
 
 
 def _build_bm25_index():
@@ -23,7 +24,6 @@ def _build_bm25_index():
     if count == 0:
         return
 
-    # Fetch all docs in batches (ChromaDB limit)
     batch_size = 500
     all_docs = []
     all_metas = []
@@ -48,14 +48,11 @@ def _build_bm25_index():
     try:
         from rank_bm25 import BM25Okapi
         import nltk
-        try:
-            nltk.data.find("tokenizers/punkt_tab")
-        except LookupError:
-            nltk.download("punkt_tab", quiet=True)
-        try:
-            nltk.data.find("tokenizers/punkt")
-        except LookupError:
-            nltk.download("punkt", quiet=True)
+        for pkg in ["punkt_tab", "punkt"]:
+            try:
+                nltk.data.find(f"tokenizers/{pkg}")
+            except LookupError:
+                nltk.download(pkg, quiet=True)
 
         tokenized = [nltk.word_tokenize(doc.lower()) for doc in all_docs]
         _bm25_index = BM25Okapi(tokenized)
@@ -64,7 +61,7 @@ def _build_bm25_index():
 
 
 def _bm25_search(query: str, k: int = 10) -> list[dict]:
-    """Keyword search using BM25. Returns list of {id, content, metadata, score}."""
+    """Keyword search using BM25."""
     global _bm25_index, _bm25_docs
 
     if _bm25_index is None:
@@ -73,14 +70,11 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
         return []
 
     import nltk
-    try:
-        nltk.data.find("tokenizers/punkt_tab")
-    except LookupError:
-        nltk.download("punkt_tab", quiet=True)
-    try:
-        nltk.data.find("tokenizers/punkt")
-    except LookupError:
-        nltk.download("punkt", quiet=True)
+    for pkg in ["punkt_tab", "punkt"]:
+        try:
+            nltk.data.find(f"tokenizers/{pkg}")
+        except LookupError:
+            nltk.download(pkg, quiet=True)
 
     tokenized_query = nltk.word_tokenize(query.lower())
     scores = _bm25_index.get_scores(tokenized_query)
@@ -128,27 +122,60 @@ def _rrf_fusion(
 
 
 # ---------------------------------------------------------------------------
-# Multi-query reformulation
+# Multi-query retrieval (Tejasva's approach with real LLM)
 # ---------------------------------------------------------------------------
 
-MULTI_QUERY_PROMPT = PromptTemplate.from_template(
-    """You are a mortgage document retrieval assistant. Given the user question, generate {n} diverse reformulations that would help find relevant mortgage/compliance documents. Each reformulation should approach the topic from a different angle.
+def _get_multi_query_retriever():
+    """Build a MultiQueryRetriever using our configured LLM and ChromaDB."""
+    collection = vectorstore.get_collection()
+    count = collection.count()
+    if count == 0:
+        return None
 
-Original question: {question}
+    # Build langchain Chroma from existing collection
+    from langchain_chroma import Chroma
+    from .embeddings import get_embeddings
 
-Return ONLY the reformulated questions, one per line, no numbering or bullets:"""
-)
+    embedding_fn = get_embeddings()
+    vectorstore_lc = Chroma(
+        client=vectorstore.get_client(),
+        collection_name=collection.name,
+        embedding_function=embedding_fn,
+    )
 
-
-def _generate_queries(question: str, n: int = 3) -> list[str]:
-    """Use LLM to generate N reformulated queries."""
+    base_retriever = vectorstore_lc.as_retriever(search_kwargs={"k": 5})
     llm = get_llm()
-    prompt = MULTI_QUERY_PROMPT.format(question=question, n=n)
-    response = llm.invoke(prompt)
-    if hasattr(response, "content"):
-        response = response.content
-    queries = [q.strip().lstrip("0123456789.-) ") for q in response.strip().split("\n") if q.strip()]
-    return queries[:n]
+
+    mq_retriever = MultiQueryRetriever.from_llm(
+        retriever=base_retriever,
+        llm=llm,
+    )
+    return mq_retriever
+
+
+def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:
+    """Run multi-query retrieval using LangChain's MultiQueryRetriever."""
+    mq_retriever = _get_multi_query_retriever()
+    if mq_retriever is None:
+        return []
+
+    try:
+        docs = mq_retriever.invoke(query)
+    except Exception:
+        return []
+
+    seen: dict[str, dict] = {}
+    for doc in docs:
+        meta = doc.metadata if hasattr(doc, "metadata") else {}
+        doc_id = meta.get("doc_id", doc.page_content[:50])
+        if doc_id not in seen:
+            seen[doc_id] = {
+                "id": doc_id,
+                "content": doc.page_content,
+                "metadata": meta,
+            }
+
+    return list(seen.values())[:n_results]
 
 
 # ---------------------------------------------------------------------------
@@ -164,50 +191,39 @@ def hybrid_retrieve(
 ) -> list[dict]:
     """
     Hybrid retrieval: BM25 + vector search with RRF fusion.
-    Optionally uses multi-query reformulation.
+    Uses LangChain's MultiQueryRetriever for query expansion.
 
-    Returns list of {id, content, metadata, rrf_score, source}.
+    Returns list of {id, content, metadata, rrf_score}.
     """
-    all_results: list[dict] = []
+    # --- Vector search (direct ChromaDB query) ---
+    v_results = vectorstore.query_documents(query_text=query, n_results=n_results, doc_ids=doc_ids)
+    vector_hits = []
+    if v_results["documents"][0]:
+        for doc, meta, dist in zip(
+            v_results["documents"][0],
+            v_results["metadatas"][0],
+            v_results["distances"][0],
+        ):
+            vector_hits.append({
+                "id": meta.get("doc_id", ""),
+                "content": doc,
+                "metadata": meta,
+                "score": 1 - dist,
+            })
 
+    # --- BM25 search ---
+    bm25_hits = _bm25_search(query, k=n_results)
+    if doc_ids:
+        bm25_hits = [h for h in bm25_hits if h["metadata"].get("doc_id") in doc_ids]
+
+    # --- Multi-query expansion (Tejasva's MultiQueryRetriever) ---
+    mq_hits = []
     if use_multi_query:
-        queries = _generate_queries(query, n=multi_query_n)
-        all_queries = [query] + queries
-    else:
-        all_queries = [query]
-
-    for q in all_queries:
-        # Vector search
-        v_results = vectorstore.query_documents(query_text=q, n_results=n_results, doc_ids=doc_ids)
-        vector_hits = []
-        if v_results["documents"][0]:
-            for doc, meta, dist in zip(
-                v_results["documents"][0],
-                v_results["metadatas"][0],
-                v_results["distances"][0],
-            ):
-                vector_hits.append({
-                    "id": meta.get("doc_id", ""),
-                    "content": doc,
-                    "metadata": meta,
-                    "score": 1 - dist,  # cosine distance → similarity
-                })
-
-        # BM25 search
-        bm25_hits = _bm25_search(q, k=n_results)
+        mq_hits = _multi_query_retrieve(query, n_results=n_results)
         if doc_ids:
-            bm25_hits = [h for h in bm25_hits if h["metadata"].get("doc_id") in doc_ids]
+            mq_hits = [h for h in mq_hits if h["metadata"].get("doc_id") in doc_ids]
 
-        # Fuse with RRF
-        fused = _rrf_fusion(vector_hits, bm25_hits, top_n=n_results)
-        all_results.extend(fused)
-
-    # Deduplicate across all queries by doc_id, keep highest RRF score
-    seen: dict[str, dict] = {}
-    for r in all_results:
-        doc_id = r["id"]
-        if doc_id not in seen or r["rrf_score"] > seen[doc_id]["rrf_score"]:
-            seen[doc_id] = r
-
-    final = sorted(seen.values(), key=lambda x: x["rrf_score"], reverse=True)[:n_results]
-    return final
+    # --- RRF fusion of all three ---
+    all_vector = vector_hits + mq_hits
+    fused = _rrf_fusion(all_vector, bm25_hits, top_n=n_results)
+    return fused
