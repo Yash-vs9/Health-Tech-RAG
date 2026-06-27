@@ -25,7 +25,21 @@ User Upload (PDF / DOCX)
                                                                 ChromaDB Vector Store
                                                                           |
                                                                           v
-User Question  -->  POST /query  -->  Retriever (k=5)  -->  LLM  -->  Answer + Sources
+User Question  -->  POST /query  -->  Hybrid Retriever  -->  LLM  -->  Answer + Sources
+                                        |
+                          +-------------+-------------+
+                          |             |             |
+                      BM25        Vector (k=5)   Multi-Query
+                    Keyword       ChromaDB       Generate N
+                    Search        Cosine         reformulations
+                          |             |             |
+                          +------+------+------+------+
+                                 |
+                          Reciprocal Rank
+                            Fusion (RRF)
+                                 |
+                                 v
+                         Top 5 Fused Results
                                                                            |
                                                                  +---------+---------+---------+
                                                                  |         |                   |
@@ -154,6 +168,13 @@ Open **http://localhost:3000**
 | `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
 **Rule:** Never mix embedding models — use the same for indexing AND querying.
+
+### Retriever Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MULTI_QUERY_ENABLED` | `true` | Generate N reformulated queries for better recall |
+| `MULTI_QUERY_N` | `3` | Number of reformulated queries per question |
 
 ---
 

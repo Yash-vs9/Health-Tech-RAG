@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from langchain_core.prompts import PromptTemplate
 from .llm import get_llm
-from . import vectorstore
+from .retriever import hybrid_retrieve
 
 SYSTEM_PROMPT = """You are a mortgage document intelligence assistant.
 Answer only from the provided mortgage-related documents.
@@ -22,27 +22,32 @@ Answer:"""
 
 
 def query_rag(question: str, doc_ids: list[str] | None = None) -> dict:
-    results = vectorstore.query_documents(query_text=question, n_results=5, doc_ids=doc_ids or None)
+    use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
+    multi_query_n = int(os.getenv("MULTI_QUERY_N", "3"))
 
-    if not results["documents"][0]:
+    results = hybrid_retrieve(
+        query=question,
+        n_results=5,
+        doc_ids=doc_ids or None,
+        use_multi_query=use_multi_query,
+        multi_query_n=multi_query_n,
+    )
+
+    if not results:
         return {
             "answer": "I don't have that information in the provided documents.",
             "sources": [],
         }
 
     sources = []
-    for doc, meta, dist in zip(
-        results["documents"][0],
-        results["metadatas"][0],
-        results["distances"][0],
-    ):
+    for r in results:
         sources.append({
-            "content": doc,
-            "metadata": meta,
-            "distance": dist,
+            "content": r["content"],
+            "metadata": r["metadata"],
+            "rrf_score": r.get("rrf_score", 0),
         })
 
-    context = "\n\n".join(results["documents"][0])
+    context = "\n\n".join([r["content"] for r in results])
     llm = get_llm()
     prompt = PromptTemplate(template=SYSTEM_PROMPT, input_variables=["context", "question"])
     filled = prompt.format(context=context, question=question)
