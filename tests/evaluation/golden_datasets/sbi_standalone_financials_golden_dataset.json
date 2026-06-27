@@ -1,0 +1,232 @@
+{
+  "document": "State Bank of India - Standalone Financials, Annual Report 2023-24",
+  "source_pages_total": 87,
+  "description": "Golden evaluation set for RAG pipelines indexing this document. Each entry includes the query, the ground-truth answer, the page(s) that should be retrieved, and keyword anchors useful for checking retrieval recall (Recall@k) independent of exact chunk boundaries.",
+  "entries": [
+    {
+      "id": "G001",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What was SBI's total balance sheet size as at 31st March 2024?",
+      "expected_answer": "Total assets/liabilities stood at ₹6,179,693.94 crore (in thousands: 6179693,94,50) as at 31st March 2024, up from ₹5,516,978.53 crore in the previous year.",
+      "expected_pages": [1],
+      "expected_chunk_keywords": ["TOTAL", "6179693,94,50", "Balance Sheet", "31st March 2024"]
+    },
+    {
+      "id": "G002",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What was SBI's net profit for FY2023-24?",
+      "expected_answer": "Net Profit for the year ended 31st March 2024 was ₹61,076.62 crore, compared to ₹50,232.45 crore in the previous year.",
+      "expected_pages": [9],
+      "expected_chunk_keywords": ["Net Profit for the year", "61076,62,02", "PROFIT"]
+    },
+    {
+      "id": "G003",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What is SBI's basic and diluted earnings per share for FY24?",
+      "expected_answer": "Basic EPS was ₹68.44 and Diluted EPS was also ₹68.44 (face value ₹1 per share), compared to ₹56.29 in the previous year.",
+      "expected_pages": [9, 71],
+      "expected_chunk_keywords": ["EARNINGS PER EQUITY SHARE", "68.44", "Basic", "Diluted"]
+    },
+    {
+      "id": "G004",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What was the Capital to Risk Weighted Assets Ratio (CRAR) as at 31st March 2024?",
+      "expected_answer": "CRAR was 14.28% as at 31st March 2024, down from 14.68% in the previous year. Tier 1 capital ratio was 11.93% and Tier 2 was 2.35%.",
+      "expected_pages": [23],
+      "expected_chunk_keywords": ["Capital to Risk Weighted Assets Ratio", "CRAR", "14.28%", "Tier 1 capital Ratio"]
+    },
+    {
+      "id": "G005",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What was the Gross NPA ratio and Net NPA ratio for SBI in FY24?",
+      "expected_answer": "Gross NPA to Gross Advances was 2.24% (down from 2.78%) and Net NPA to Net Advances was 0.57% (down from 0.67%) as at 31st March 2024.",
+      "expected_pages": [41],
+      "expected_chunk_keywords": ["Asset Quality Ratios", "Gross NPA to Gross Advances", "Net NPA to Net Advances"]
+    },
+    {
+      "id": "G006",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What was total deposits and total advances for SBI as at 31st March 2024?",
+      "expected_answer": "Total Deposits were ₹4,916,076.77 crore and Total Advances were ₹3,703,970.85 crore as at 31st March 2024.",
+      "expected_pages": [1, 7],
+      "expected_chunk_keywords": ["Deposits", "4916076,76,93", "Advances", "3703970,85,40"]
+    },
+    {
+      "id": "G007",
+      "category": "multi-hop",
+      "difficulty": "hard",
+      "query": "How did SBI's Liquidity Coverage Ratio (LCR) trend across the four quarters of FY24, and what was the consolidated Group LCR at year end?",
+      "expected_answer": "Standalone quarterly LCR for FY24 was: Q1 (Jun'23) 146.92%, Q2 (Sep'23) 145.50%, Q3 (Dec'23) 137.79%, Q4 (Mar'24) 129.02% — a declining trend through the year. The consolidated SBI Group LCR as at 31st March 2024 was 130.62%.",
+      "expected_pages": [27, 28, 29],
+      "expected_chunk_keywords": ["Liquidity Coverage Ratio", "129.02%", "130.62%", "Quarter ended"]
+    },
+    {
+      "id": "G008",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What was SBI's Net Stable Funding Ratio (NSFR) standalone as at 31st March 2024?",
+      "expected_answer": "Standalone NSFR was 113.87% as at 31st March 2024, with Total ASF of ₹43,75,305 crore and Total RSF of ₹38,42,230 crore.",
+      "expected_pages": [30, 32],
+      "expected_chunk_keywords": ["Net Stable Funding Ratio", "113.87%", "Total ASF", "Total RSF"]
+    },
+    {
+      "id": "G009",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What dividend did SBI declare for FY2023-24?",
+      "expected_answer": "The Central Board declared a dividend of ₹13.70 per share (1370%) for the year ended 31st March 2024.",
+      "expected_pages": [74],
+      "expected_chunk_keywords": ["Central Board has declared a dividend", "13.70 per share", "1370%"]
+    },
+    {
+      "id": "G010",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "How many fraud cases did SBI report during FY24 and what amount was involved?",
+      "expected_answer": "SBI reported 1,586 frauds amounting to ₹3,406.87 crore during FY24, fully provided for. Additionally, 13,158 digital payment frauds amounting to ₹88.91 crore were reported separately.",
+      "expected_pages": [45],
+      "expected_chunk_keywords": ["Number of Frauds reported", "1,586", "3,406.87", "digital payment frauds"]
+    },
+    {
+      "id": "G011",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "Who was the Chairman of State Bank of India as per this annual report?",
+      "expected_answer": "Shri Dinesh Kumar Khara was the Chairman of State Bank of India as per the FY2023-24 annual report.",
+      "expected_pages": [1, 67],
+      "expected_chunk_keywords": ["Dinesh Kumar Khara", "Chairman"]
+    },
+    {
+      "id": "G012",
+      "category": "multi-hop",
+      "difficulty": "hard",
+      "query": "Who were the Managing Directors of SBI during FY2023-24, and were there any changes during the year?",
+      "expected_answer": "The Managing Directors were: Shri Challa Sreenivasulu Setty (International Banking, Global Markets & Technology), Shri Ashwini Kumar Tewari (Corporate Banking & Subsidiaries), Shri Alok Kumar Choudhary (Risk, Compliance & SARG), and Shri Vinay M. Tonse (Retail Business & Operations, w.e.f. 21st November 2023). Shri Swaminathan Janakiraman served as MD (Corporate Banking & Subsidiaries) until 25th June 2023, after which Shri Ashwini Kumar Tewari took over that portfolio.",
+      "expected_pages": [1, 67],
+      "expected_chunk_keywords": ["Managing Director", "Swaminathan Janakiraman", "up to 25th June 2023", "Vinay M. Tonse"]
+    },
+    {
+      "id": "G013",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What penalties did RBI impose on SBI during FY2023-24?",
+      "expected_answer": "RBI imposed penalties of ₹1 crore for non-compliance on 'Loans and Advances - Statutory and Other Restrictions' and ₹0.30 crore for non-compliance with intra-group transaction guidelines (order dated 25th Sept 2023); and ₹1 crore each for contravention of Section 19(2) and Section 26A(2) of the Banking Regulation Act, 1949 (order dated 26th Feb 2024). Total penalties: ₹3.30 crore.",
+      "expected_pages": [54],
+      "expected_chunk_keywords": ["Reserve Bank of India", "levied penalty", "Section 19(2)", "Section 26A(2)"]
+    },
+    {
+      "id": "G014",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What was the Provision Coverage Ratio (PCR) for SBI as at 31st March 2024?",
+      "expected_answer": "PCR excluding AUCA was 75.02% and PCR including AUCA was 91.89% as at 31st March 2024.",
+      "expected_pages": [41],
+      "expected_chunk_keywords": ["Provision Coverage Ratio", "PCR", "75.02%", "91.89%"]
+    },
+    {
+      "id": "G015",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What was the total amount of investments held by SBI as at 31st March 2024, and how is it split between India and outside India?",
+      "expected_answer": "Total Investments were ₹1,671,339.66 crore, comprising ₹1,605,083.61 crore in India and ₹66,256.05 crore outside India.",
+      "expected_pages": [6],
+      "expected_chunk_keywords": ["Investments", "GRAND TOTAL", "1671339,65,61", "1605083,60,41"]
+    },
+    {
+      "id": "G016",
+      "category": "multi-hop",
+      "difficulty": "hard",
+      "query": "How much provision did SBI make as exceptional items in FY24 and what were they for?",
+      "expected_answer": "SBI recognised ₹7,100 crore as exceptional items: ₹5,400 crore for estimated liability from moving to a uniform 50% pension rate for all pensioners, and ₹1,700 crore for ex-gratia benefit and neutralisation of Dearness Relief to pre-November 2002 retirees and family pensioners. This appears both in Schedule 16 (operating expenses) and in the segment reporting result adjustment.",
+      "expected_pages": [12, 74, 65],
+      "expected_chunk_keywords": ["exceptional items", "7,100,00,00", "uniform rate of 50%", "Dearness Relief"]
+    },
+    {
+      "id": "G017",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What was SBI's Return on Assets (ROA) for FY2023-24?",
+      "expected_answer": "Return on Assets (on net-asset basis) was 1.36% in FY24, up from 0.96% in the previous year.",
+      "expected_pages": [54],
+      "expected_chunk_keywords": ["Return on Assets", "1.36%", "Business Ratios"]
+    },
+    {
+      "id": "G018",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "How many complaints did SBI receive from customers in FY24 and how many were pending at year end?",
+      "expected_answer": "SBI received 32,33,561 complaints during FY24 (down 16.30% from previous year), and 1,31,423 complaints were pending at year end.",
+      "expected_pages": [52],
+      "expected_chunk_keywords": ["Number of complaints received during the year", "32,33,561", "pending at the end of the year"]
+    },
+    {
+      "id": "G019",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What is the par/face value of SBI's equity shares?",
+      "expected_answer": "The face value (nominal value) of SBI's equity shares is ₹1 per share.",
+      "expected_pages": [3, 71],
+      "expected_chunk_keywords": ["Equity Shares of", "₹1 each", "Nominal value per share"]
+    },
+    {
+      "id": "G020",
+      "category": "multi-hop",
+      "difficulty": "hard",
+      "query": "Compare SBI's net profit contribution from domestic vs. foreign operations in FY24.",
+      "expected_answer": "Of the total net profit of ₹61,076.62 crore in FY24, domestic operations contributed ₹49,032.85 crore and foreign operations contributed ₹12,043.77 crore (per the AS-17 secondary/geographic segment disclosure).",
+      "expected_pages": [66],
+      "expected_chunk_keywords": ["Secondary", "Geographic Segments", "Domestic", "Foreign", "Net Profit"]
+    },
+    {
+      "id": "G021",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What were the four primary business segments used by SBI for segment reporting in FY24?",
+      "expected_answer": "Treasury, Corporate/Wholesale Banking, Retail Banking (with Digital Banking as a sub-segment), and Other Banking Business.",
+      "expected_pages": [64, 65],
+      "expected_chunk_keywords": ["primary segments", "Treasury", "Corporate / Wholesale Banking", "Retail Banking", "Other Banking Business"]
+    },
+    {
+      "id": "G022",
+      "category": "single-fact",
+      "difficulty": "easy",
+      "query": "What statutory reserve transfer did SBI make in FY24?",
+      "expected_answer": "SBI transferred ₹18,322.98 crore to Statutory Reserve in FY24 (closing balance ₹118,960.74 crore), compared to ₹15,069.74 crore transferred in the previous year.",
+      "expected_pages": [3, 9],
+      "expected_chunk_keywords": ["Statutory Reserve", "Transfer to Statutory Reserve", "18322,98,60"]
+    },
+    {
+      "id": "G023",
+      "category": "single-fact",
+      "difficulty": "hard",
+      "query": "What was SBI's exposure to the real estate sector as at 31st March 2024?",
+      "expected_answer": "Total exposure to the Real Estate Sector was ₹947,857.57 crore, comprising ₹714,143.23 crore in residential mortgages, ₹71,840.90 crore in commercial real estate, and ₹161,873.44 crore in indirect exposure to NHB/HFCs.",
+      "expected_pages": [46],
+      "expected_chunk_keywords": ["Total Exposure to Real Estate Sector", "Residential Mortgages", "Commercial Real Estate"]
+    },
+    {
+      "id": "G024",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "Which audit firms jointly audited SBI's standalone financial statements for FY24?",
+      "expected_answer": "Twelve joint statutory auditors signed the report, including K C Mehta & Co LLP, M C Bhandari & Co., V Singhi & Associates, Suri & Co., Talati & Talati LLP, Ravi Rajan & Co. LLP, Gokhale & Sathe, M K Aggarwal & Co., J L N U S & Co., Vinod Kumar & Associates, R G N Price & Co., and Rama K Gupta & Co.",
+      "expected_pages": [2, 10],
+      "expected_chunk_keywords": ["Chartered Accountants", "K C Mehta", "V Singhi", "Ravi Rajan"]
+    },
+    {
+      "id": "G025",
+      "category": "single-fact",
+      "difficulty": "medium",
+      "query": "What were the key audit matters identified by auditors for SBI's FY24 standalone audit?",
+      "expected_answer": "Four key audit matters: (1) Classification of Advances, Income Recognition, and NPA Provisioning; (2) Classification and Valuation of Investments and NPI provisioning; (3) Assessment of Provisions and Contingent Liabilities for litigations including tax matters; (4) Valuation of employees' defined benefit obligations.",
+      "expected_pages": [78, 79, 80],
+      "expected_chunk_keywords": ["Key Audit Matters", "Classification of Advances", "Valuation of Investments", "defined benefit obligations"]
+    }
+  ]
+}

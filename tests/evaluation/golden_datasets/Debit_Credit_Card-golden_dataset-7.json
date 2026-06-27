@@ -1,0 +1,502 @@
+[
+  {
+    "ID": 1,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #1 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-1",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 2,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #2?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-2",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 3,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #3. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-3",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 4,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #4?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-4",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 5,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #5. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-5",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 6,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #6 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-6",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 7,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #7?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-7",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 8,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #8. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-8",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 9,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #9?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-9",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 10,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #10. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-10",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 11,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #11 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-11",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 12,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #12?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-12",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 13,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #13. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-13",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 14,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #14?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-14",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 15,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #15. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-15",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 16,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #16 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-16",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 17,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #17?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-17",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 18,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #18. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-18",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 19,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #19?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-19",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 20,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #20. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-20",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 21,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #21 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-21",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 22,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #22?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-22",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 23,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #23. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-23",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 24,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #24?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-24",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 25,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #25. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-25",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 26,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #26 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-26",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 27,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #27?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-27",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 28,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #28. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-28",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 29,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #29?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-29",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 30,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #30. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-30",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 31,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #31 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-31",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 32,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #32?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-32",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 33,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #33. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-33",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 34,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #34?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-34",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 35,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #35. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-35",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 36,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #36 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-36",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 37,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #37?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-37",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 38,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #38. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-38",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 39,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #39?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-39",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 40,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #40. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-40",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 41,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #41 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-41",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 42,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #42?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-42",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 43,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #43. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-43",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 44,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #44?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-44",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 45,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #45. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-45",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 46,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "What is the RBI requirement #46 regarding credit/debit card operations?",
+    "Ground Truth Answer": "As specified in the RBI Credit & Debit Card Directions, 2025.",
+    "Question Type": "Factoid",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-46",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 47,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Why does RBI mandate customer protection measure #47?",
+    "Ground Truth Answer": "To improve transparency, consumer protection, and regulatory compliance.",
+    "Question Type": "Reasoning",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-47",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 48,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "A card issuer violates rule #48. What compliance action and customer impact follow?",
+    "Ground Truth Answer": "Corrective action must be taken and customer rights must be protected.",
+    "Question Type": "Multi-hop",
+    "Difficulty": "Hard",
+    "Page / Section (Dummy)": "Reference-48",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 49,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "How should a bank demonstrate compliance with requirement #49?",
+    "Ground Truth Answer": "By following board-approved policies and RBI directions.",
+    "Question Type": "Compliance",
+    "Difficulty": "Easy",
+    "Page / Section (Dummy)": "Reference-49",
+    "Notes / Eval Hints": "Golden Dataset"
+  },
+  {
+    "ID": 50,
+    "Source Passage (Context)": "RBI Cards 2025",
+    "Question": "Scenario: A customer complaint involves rule #50. What should the issuer do?",
+    "Ground Truth Answer": "Follow the grievance redressal framework and resolve within prescribed timelines.",
+    "Question Type": "Scenario",
+    "Difficulty": "Medium",
+    "Page / Section (Dummy)": "Reference-50",
+    "Notes / Eval Hints": "Golden Dataset"
+  }
+]
