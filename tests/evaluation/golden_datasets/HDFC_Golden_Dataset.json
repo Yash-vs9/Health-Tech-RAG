@@ -1,0 +1,120 @@
+
+[
+  {
+    "testid": "HDFCREASONING001",
+    "difficulty": "Hard",
+    "tasktype": "Absolute Value Extraction from Ratios (CASA Decomposition)",
+    "query": "Given that HDFC Bank's CASA ratio stood at 34.8% of Total Deposits as of March 31, 2025, and Total Deposits are reported at ₹27,14,714.90 crore, calculate the absolute CASA Deposits in crore and then separately verify this against the disclosed Savings Account and Current Account deposit figures from Schedule 3.",
+    "expectedanswer": "Calculated CASA Deposits = 34.8% × ₹27,14,714.90 crore = ₹9,44,720.79 crore. From Schedule 3, Savings Bank Deposits = ₹6,30,466.06 crore and Demand Deposits (Current Accounts) from others = ₹3,09,943.78 crore (₹3,14,093.64 crore total demand deposits including banks at ₹4,149.86 crore). Disclosed CASA = ₹6,30,466.06 + ₹3,14,093.64 = ₹9,44,559.70 crore. The ratio-implied figure (₹9,44,720.79 crore) and schedule-disclosed figure (₹9,44,559.70 crore) are consistent within rounding tolerance, confirming CASA at approximately ₹9,44,560 crore or 34.8% of Total Deposits.",
+    "reasoningsteps": [
+      "Step 1: Extract Total Deposits = ₹27,14,714.90 crore from Schedule 3 of the Standalone Balance Sheet (March 31, 2025).",
+      "Step 2: Extract CASA ratio = 34.8% from the Directors' Report / Management Discussion & Analysis section ('CASA Deposits accounted for 34.8 per cent of Total Deposits').",
+      "Step 3: Compute implied CASA = 34.8% × ₹27,14,714.90 = ₹9,44,720.79 crore.",
+      "Step 4: From Schedule 3, extract Savings Bank Deposits = ₹6,30,466.06 crore and Total Demand Deposits = ₹3,14,093.64 crore (sum of from banks ₹4,149.86 crore and from others ₹3,09,943.78 crore).",
+      "Step 5: Compute Schedule-derived CASA = ₹6,30,466.06 + ₹3,14,093.64 = ₹9,44,559.70 crore.",
+      "Step 6: Cross-verify: |₹9,44,720.79 − ₹9,44,559.70| = ₹161.09 crore difference, attributable to rounding in the disclosed 34.8% ratio. Conclude figures are consistent."
+    ],
+    "groundtruthcontext": "Schedule 3 – Deposits (Standalone Balance Sheet as at March 31, 2025) and Directors' Report / MDA section: 'CASA Deposits accounted for 34.8 per cent of Total Deposits.'"
+  },
+  {
+    "testid": "HDFCREASONING002",
+    "difficulty": "Hard",
+    "tasktype": "Asset Quality Stress Vectors – Absolute Provisioning Coverage Gap",
+    "query": "As of March 31, 2025, HDFC Bank reported Gross NPAs of ₹35,194.95 crore and a Provision Coverage Ratio (PCR) of 67.86% (based on specific provisions alone, excluding write-offs). Calculate the absolute specific provision held against NPAs, the uncovered NPA exposure (provisioning gap), and reconcile this against the disclosed Net NPA figure of ₹11,320.43 crore.",
+    "expectedanswer": "Specific Provisions = 67.86% × ₹35,194.95 crore = ₹23,886.52 crore. This is consistent with the disclosed closing specific provision of ₹23,874.52 crore (minor rounding). Uncovered NPA Exposure (Provisioning Gap) = Gross NPAs − Specific Provisions = ₹35,194.95 − ₹23,874.52 = ₹11,320.43 crore. This exactly reconciles with the disclosed Net NPA figure of ₹11,320.43 crore, confirming the Net NPA computation: Net NPAs = Gross NPAs − Specific Provisions = ₹11,320.43 crore.",
+    "reasoningsteps": [
+      "Step 1: Extract Gross NPA = ₹35,194.95 crore from Schedule 18 Note 10 ('Classification of assets and provisions held as at March 31, 2025'; footnote specifying NPAs include advances of ₹35,194.95 crore).",
+      "Step 2: Extract Provision Coverage Ratio = 67.86% from the Financial Performance section and Schedule 18 Note 10 ('Provision coverage ratio does not include assets written-off').",
+      "Step 3: Compute implied Specific Provisions = 67.86% × ₹35,194.95 crore = ₹23,886.52 crore.",
+      "Step 4: Cross-check against disclosed closing provision on advances = ₹23,874.52 crore from Schedule 18 Note 10 (footnote ^^). Difference of ₹11.99 crore is attributable to rounding in the PCR percentage.",
+      "Step 5: Compute Provisioning Gap = ₹35,194.95 − ₹23,874.52 = ₹11,320.43 crore.",
+      "Step 6: Verify this equals the disclosed Net NPA = ₹11,320.43 crore (from 'Net NPAs' closing balance in Schedule 18 Note 10). Confirm exact reconciliation."
+    ],
+    "groundtruthcontext": "Schedule 18 Note 10 – 'Classification of assets and provisions held as at March 31, 2025'; Financial Performance section: 'Net NPA ratio stood at 0.43 per cent' and 'Provision Coverage Ratio 67.86 per cent'."
+  },
+  {
+    "testid": "HDFCREASONING003",
+    "difficulty": "Hard",
+    "tasktype": "Spread & Margin Decomposition – Net Interest Margin Verification",
+    "query": "For FY 2024-25, HDFC Bank reported Net Interest Income (NII) of ₹1,22,670.09 crore, a Net Interest Margin (NIM) of 3.48%, and NIM as a percentage of average interest earning assets at 3.67%. Using the disclosed NIM of 3.48% (as a percentage of working funds), back-calculate the average working funds for FY 2024-25 and compare it against the disclosed figure. Then compute the implied average interest earning assets using the 3.67% NIM metric.",
+    "expectedanswer": "Average Working Funds (implied) = NII ÷ NIM (working funds) = ₹1,22,670.09 crore ÷ 3.48% = ₹35,25,291.67 crore. Per business ratios disclosure, 'Working funds is the daily average of total assets during the year.' The 10-year financial highlights show total assets at ₹39,10,198.94 crore (FY25) and ₹36,17,623.09 crore (FY24), giving a simple average of ~₹37,63,911 crore — this differs from the implied ₹35,25,291.67 crore because working funds uses a daily average, not a simple year-end average. Average Interest Earning Assets (implied) = NII ÷ NIM (earning assets) = ₹1,22,670.09 crore ÷ 3.67% = ₹33,42,806.26 crore. The difference between average working funds (₹35,25,291.67 crore) and average interest earning assets (₹33,42,806.26 crore) = ₹1,82,485.41 crore, representing non-interest-earning assets such as fixed assets, non-performing assets, and other non-earning components.",
+    "reasoningsteps": [
+      "Step 1: Extract NII = ₹1,22,670.09 crore from Schedule 13 minus Schedule 15 (Interest Earned ₹3,00,517.04 crore − Interest Expended ₹1,77,846.95 crore = ₹1,22,670.09 crore), confirmed in Directors' Report.",
+      "Step 2: Extract NIM (working funds basis) = 3.48% from Schedule 18 Note 19.1 – Business ratios ('Net interest income as a percentage to working funds: 3.48%').",
+      "Step 3: Compute implied Average Working Funds = ₹1,22,670.09 crore ÷ 0.0348 = ₹35,25,291.67 crore.",
+      "Step 4: Extract NIM (earning assets basis) = 3.67% from Schedule 18 Note 19.1 – Business ratios ('Net interest income as a percentage to average interest earning assets: 3.67%').",
+      "Step 5: Compute implied Average Interest Earning Assets = ₹1,22,670.09 crore ÷ 0.0367 = ₹33,42,806.26 crore.",
+      "Step 6: Compute spread between average working funds and average interest earning assets = ₹35,25,291.67 − ₹33,42,806.26 = ₹1,82,485.41 crore (non-earning assets).",
+      "Step 7: Note that simple average of year-end total assets ((₹39,10,198.94 + ₹36,17,623.09) ÷ 2 = ₹37,63,911.02 crore) diverges from implied working funds because working funds uses daily average."
+    ],
+    "groundtruthcontext": "Schedule 18 Note 19.1 – Business Ratios / Information (Standalone Financial Statements FY 2024-25); Schedule 13 – Interest Earned and Schedule 15 – Interest Expended; 10 Year Financial Highlights table."
+  },
+  {
+    "testid": "HDFCREASONING004",
+    "difficulty": "Hard",
+    "tasktype": "Segment Growth Anomalies & Compositions – Advances Mix Shift",
+    "query": "Using HDFC Bank's disclosed segment data for FY 2024-25 and FY 2023-24, calculate the year-over-year absolute growth and percentage growth in Segment Assets for the Retail Banking (Non-Digital) segment versus the Wholesale Banking segment. Then determine which segment grew faster and by how many percentage points, and compute what share of total segment assets each held at the end of FY 2024-25.",
+    "expectedanswer": "Retail Banking (Non-Digital) Segment Assets: FY25 = ₹15,33,809.12 crore; FY24 = ₹13,95,037.69 crore. Absolute growth = ₹1,38,771.43 crore. Growth rate = (₹1,38,771.43 ÷ ₹13,95,037.69) × 100 = 9.95%. Wholesale Banking Segment Assets: FY25 = ₹12,47,937.97 crore; FY24 = ₹12,74,899.43 crore. Absolute growth = −₹26,961.46 crore (contraction). Growth rate = (−₹26,961.46 ÷ ₹12,74,899.43) × 100 = −2.11%. Retail grew faster by 9.95 − (−2.11) = 12.06 percentage points. Total segment assets FY25 (excluding unallocated) = ₹9,91,874.12 + ₹81.15 + ₹15,33,809.12 + ₹12,47,937.97 + ₹1,12,358.81 = ₹38,86,061.17 crore. Retail Non-Digital share = ₹15,33,809.12 ÷ ₹38,86,061.17 = 39.47%. Wholesale share = ₹12,47,937.97 ÷ ₹38,86,061.17 = 32.11%.",
+    "reasoningsteps": [
+      "Step 1: Extract Retail Banking (Non-Digital) Segment Assets FY25 = ₹15,33,809.12 crore from the Business Segments table in Schedule 18 Note 28 (Segment Reporting, FY 2024-25).",
+      "Step 2: Extract Retail Banking (Non-Digital) Segment Assets FY24 = ₹13,95,037.69 crore from the Business Segments table in Schedule 18 Note 28 (Segment Reporting, FY 2023-24).",
+      "Step 3: Compute Retail absolute growth = ₹15,33,809.12 − ₹13,95,037.69 = ₹1,38,771.43 crore. Growth % = (₹1,38,771.43 ÷ ₹13,95,037.69) × 100 = 9.95%.",
+      "Step 4: Extract Wholesale Banking Segment Assets FY25 = ₹12,47,937.97 crore and FY24 = ₹12,74,899.43 crore from the same segment table.",
+      "Step 5: Compute Wholesale absolute change = ₹12,47,937.97 − ₹12,74,899.43 = −₹26,961.46 crore. Growth % = (−₹26,961.46 ÷ ₹12,74,899.43) × 100 = −2.11%.",
+      "Step 6: Compute differential = 9.95% − (−2.11%) = 12.06 percentage points faster growth for Retail.",
+      "Step 7: Sum all segment assets (excl. unallocated): Treasury ₹9,91,874.12 + Digital Banking ₹81.15 + Retail Non-Digital ₹15,33,809.12 + Wholesale ₹12,47,937.97 + Other Banking Ops ₹1,12,358.81 = ₹38,86,061.17 crore. Compute respective shares."
+    ],
+    "groundtruthcontext": "Schedule 18 Note 28 – Segment Reporting (Business Segments table, rows 9 'Segment assets'), FY 2024-25 and FY 2023-24 comparative tables (Standalone Financial Statements)."
+  },
+  {
+    "testid": "HDFCREASONING005",
+    "difficulty": "Hard",
+    "tasktype": "Unit and Denomination Normalization Traps – Schedule vs. Crore Reconciliation",
+    "query": "The Standalone Balance Sheet reports figures in '₹ in thousands' while the Notes to Accounts (Schedule 18) report in '₹ crore'. The Standalone Balance Sheet shows Total Advances as ₹26,196,086,171 (in thousands). Convert this to crore and reconcile with the figure stated in crore in the Directors' Report and Schedule 9. Also perform the same normalization for Total Deposits shown as ₹27,147,148,959 (in thousands).",
+    "expectedanswer": "Conversion factor: 1 crore = 10,000 thousands (since 1 crore = 1,00,00,000 = 10,000 × 1,000). Total Advances in crore = ₹26,196,086,171 ÷ 10,000 = ₹26,19,608.62 crore. This exactly matches the Directors' Report ('Advances stood at ₹26,19,609 crore' — rounded to nearest crore) and Schedule 9 total (₹26,196,086,171 ÷ 10,000 = ₹26,19,608.62 crore). Total Deposits in crore = ₹27,147,148,959 ÷ 10,000 = ₹27,14,714.90 crore. This exactly matches the Directors' Report ('Total Deposits rose by 14.1 per cent to ₹27,14,715 crore' — rounded) and Schedule 3 total. Denominations are consistent once the ÷10,000 conversion is applied from thousands to crore.",
+    "reasoningsteps": [
+      "Step 1: Identify reporting denomination on the face of the Standalone Balance Sheet header: '(₹ in '000)' meaning all figures are in thousands of rupees.",
+      "Step 2: Establish conversion: 1 Indian Crore = 1,00,00,000 rupees = 10,000 thousands. Therefore, to convert from '₹ in thousands' to '₹ in crore', divide by 10,000.",
+      "Step 3: Extract Advances from Balance Sheet = ₹26,196,086,171 (in thousands). Convert: ₹26,196,086,171 ÷ 10,000 = ₹26,19,608.617 crore ≈ ₹26,19,608.62 crore.",
+      "Step 4: Cross-verify against Directors' Report narrative ('Advances stood at ₹26,19,609 crore' — rounded to nearest whole crore) and Schedule 18 Note 10 which states advances in crore directly. Confirm match.",
+      "Step 5: Extract Deposits from Balance Sheet = ₹27,147,148,959 (in thousands). Convert: ₹27,147,148,959 ÷ 10,000 = ₹27,14,714.896 crore ≈ ₹27,14,714.90 crore.",
+      "Step 6: Cross-verify against Directors' Report ('Total Deposits rose…to ₹27,14,715 crore' — rounded) and Schedule 3 total. Confirm match within rounding.",
+      "Step 7: Note the trap: Schedule 18 Notes explicitly state 'Amounts in notes…are denominated in rupee crore' while the face of the financial statements uses '₹ in '000' (thousands). A RAG pipeline that fails to normalize these will produce figures off by a factor of 10,000."
+    ],
+    "groundtruthcontext": "Standalone Balance Sheet header: '(₹ in '000)'; Schedule 9 – Advances; Schedule 3 – Deposits; Schedule 18 preamble: 'Amounts in notes forming part of the standalone financial statements for the year ended March 31, 2025 are denominated in rupee crore'; Directors' Report financial summary table."
+  },
+  {
+    "testid": "HDFCREASONING006",
+    "difficulty": "Hard",
+    "tasktype": "Asset Quality Stress Vectors – GNPA Ratio Cross-Verification with Gross Advances",
+    "query": "HDFC Bank's Gross NPA ratio is disclosed as 1.33% of Gross Advances for FY 2024-25. Given that Gross NPAs (advances only) are ₹35,222.64 crore as per the asset quality table, back-calculate the implied Gross Advances. Then verify this against the Net Advances figure in Schedule 9 (₹26,19,608.62 crore) by computing the total specific loan loss provisions that reconcile the two.",
+    "expectedanswer": "Implied Gross Advances = Gross NPAs ÷ GNPA Ratio = ₹35,222.64 crore ÷ 1.33% = ₹26,48,318.05 crore. From Schedule 9, Net Advances = ₹26,19,608.62 crore (net of bills rediscounted, IBPCs, and specific provisions). Schedule 18 Note 10 discloses closing specific provisions on advances = ₹23,874.52 crore. Reconciliation: Gross Advances (approx.) = Net Advances + Specific Provisions = ₹26,19,608.62 + ₹23,874.52 = ₹26,43,483.14 crore. The difference between ratio-implied Gross Advances (₹26,48,318.05 crore) and provision-reconciled figure (₹26,43,483.14 crore) = ₹4,834.91 crore, attributable to other netting items in Schedule 9 (bills rediscounted of nil + Inter-Bank Participation Certificates of ₹77,703.73 crore net impact and interest in suspense, claims from credit guarantors, etc.). The GNPA ratio footnote clarifies: 'Gross advances are net of bills rediscounted and interest in suspense for non-performing advances,' confirming Gross Advances per GNPA computation ≠ Schedule 9 gross figure.",
+    "reasoningsteps": [
+      "Step 1: Extract Gross NPA ratio = 1.33% from Schedule 18 Note 10 ('Gross non-performing assets to gross advances: 1.33%').",
+      "Step 2: Extract Gross NPA (advances component) = ₹35,222.64 crore from the 'Classification of assets and provisions held' table in Schedule 18 Note 10 (closing balance of Total Non-Performing Assets in advances).",
+      "Step 3: Back-calculate implied Gross Advances = ₹35,222.64 ÷ 0.0133 = ₹26,48,318.05 crore.",
+      "Step 4: Extract Net Advances from Schedule 9 = ₹26,19,608.62 crore (note the Schedule 9 header states 'Net of Bills Rediscounted: Nil and Inter Bank Participatory Certificates of ₹77,703.73 crore').",
+      "Step 5: Extract closing specific provisions on advances = ₹23,874.52 crore from Schedule 18 Note 10 (footnote ^^).",
+      "Step 6: Compute provision-reconciled Gross Advances approximation = ₹26,19,608.62 + ₹23,874.52 = ₹26,43,483.14 crore.",
+      "Step 7: Identify reconciling difference = ₹26,48,318.05 − ₹26,43,483.14 = ₹4,834.91 crore. Attribute to interest in suspense, claims from credit guarantors, funded interest term loan provisions, and IBPCs netted in Schedule 9 per Note 10 footnote definitions."
+    ],
+    "groundtruthcontext": "Schedule 18 Note 10 – 'Classification of assets and provisions held as at March 31, 2025' and footnotes 1–3 defining GNPA ratio computation; Schedule 9 – Advances (Standalone Balance Sheet as at March 31, 2025)."
+  },
+  {
+    "testid": "HDFCREASONING007",
+    "difficulty": "Hard",
+    "tasktype": "Absolute Value Extraction from Ratios – Return on Assets Verification",
+    "query": "HDFC Bank's Return on Average Assets (RoAA) is disclosed as 1.91% for FY 2024-25, and Net Profit After Tax is ₹67,347.36 crore. Using these two figures, back-calculate the implied average total assets for FY 2024-25. Then verify this against the simple average of opening (FY24 year-end) and closing (FY25 year-end) total assets from the Balance Sheet, and explain the difference.",
+    "expectedanswer": "Implied Average Total Assets = Net PAT ÷ RoAA = ₹67,347.36 crore ÷ 1.91% = ₹35,26,563.35 crore. From the Balance Sheet: Total Assets FY25 = ₹39,10,198.94 crore; Total Assets FY24 = ₹36,17,623.09 crore. Simple average = (₹39,10,198.94 + ₹36,17,623.09) ÷ 2 = ₹37,63,911.02 crore. The ratio-implied average (₹35,26,563.35 crore) is lower than the simple year-end average (₹37,63,911.02 crore) by ₹2,37,347.67 crore (6.31% lower). This difference arises because the bank computes 'average assets' using daily averages throughout the year — the balance sheet grew significantly during the year, and daily averaging weights earlier (lower-balance) periods more heavily than a simple two-point average of year-end figures. The disclosed business ratio confirms working funds (daily average total assets) = ₹35,25,291.67 crore (derived from NIM calculation in Test HDFCREASONING003), which closely matches the RoAA-implied figure of ₹35,26,563.35 crore, confirming both ratios use the same daily average asset base.",
+    "reasoningsteps": [
+      "Step 1: Extract Net PAT = ₹67,347.36 crore from Standalone Profit and Loss Account (FY 2024-25) and confirmed in Directors' Report.",
+      "Step 2: Extract RoAA = 1.91% from Schedule 18 Note 19.1 – Business Ratios ('Return on assets (average): 1.91%') and the Performance Highlights section.",
+      "Step 3: Compute implied Average Total Assets = ₹67,347.36 ÷ 0.0191 = ₹35,26,563.35 crore.",
+      "Step 4: Extract FY25 Total Assets = ₹39,10,198.94 crore (Standalone Balance Sheet, Schedule total as at March 31, 2025, converting from thousands: ₹39,101,989,446 ÷ 10,000).",
+      "Step 5: Extract FY24 Total Assets = ₹36,17,623.09 crore from previous year Balance Sheet column.",
+      "Step 6: Compute simple two-point average = (₹39,10,198.94 + ₹36,17,623.09) ÷ 2 = ₹37,63,911.02 crore.",
+      "Step 7: Compute divergence = ₹37,63,911.02 − ₹35,26,563.35 = ₹2,37,347.67 crore (6.31% higher). Explain: daily average methodology vs. simple year-end average; cross-reference with NIM-implied working funds ≈ ₹35,25,291.67 crore from Test 003 confirming both ratios share the same denominator basis."
+    ],
+    "groundtruthcontext": "Schedule 18 Note 19.1 – Business Ratios/Information ('Return on assets (average): 1.91%'); Standalone Profit and Loss Account – Net Profit ₹67,347.36 crore; Standalone Balance Sheet total assets FY25 and FY24 columns; Performance Highlights section of the Integrated Annual Report."
+  }
+]
