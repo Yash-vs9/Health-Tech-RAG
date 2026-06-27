@@ -26,14 +26,14 @@ User Upload (PDF / DOCX)
                                                                           |
                                                                           v
 User Question  -->  POST /query  -->  Retriever (k=5)  -->  LLM  -->  Answer + Sources
-                                                                          |
-                                                                +---------+---------+
-                                                                |                   |
-                                                            LLM_PROVIDER        LLM_PROVIDER
-                                                              = ollama             = gemini
-                                                            llama3.2           gemini-2.5-flash-lite
-                                                                |                   |
-                                                                +---------+---------+
+                                                                           |
+                                                                 +---------+---------+---------+
+                                                                 |         |                   |
+                                                             LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
+                                                               = ollama     = gemini           = hf
+                                                             llama3.2   gemini-2.5-flash-lite  Qwen2.5-7B-Instruct
+                                                                 |         |                   |
+                                                                 +---------+---------+---------+
                                                                           |
                                                                           v
                                                                     React Frontend
@@ -51,7 +51,7 @@ Health-Tech-RAG/
 │   ├── schemas.py               # Pydantic request/response models
 │   └── services/
 │       ├── __init__.py
-│       ├── llm.py               # LLM provider (Ollama / Gemini)
+│       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace)
 │       ├── embeddings.py        # Embedding provider (local / API)
 │       ├── vectorstore.py       # ChromaDB integration
 │       ├── ingestion.py         # PDF + DOCX → chunk → embed → store
@@ -144,6 +144,7 @@ Open **http://localhost:3000**
 |----------------|-------|----------|------|
 | `ollama` | llama3.2 | Ollama installed locally | Free |
 | `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier |
+| `hf` | Qwen/Qwen2.5-7B-Instruct | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
 ### Embedding Provider
 
