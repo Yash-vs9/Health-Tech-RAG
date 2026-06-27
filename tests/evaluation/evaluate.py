@@ -65,20 +65,29 @@ def ingest_documents():
 
 def normalize_question(raw: dict) -> dict:
     """Normalize different golden dataset formats into a common schema."""
-    q = raw.get("question") or raw.get("query") or raw.get("Question") or ""
+    q = (raw.get("question") or raw.get("query") or raw.get("Query")
+         or raw.get("Question") or "")
     a = (raw.get("expected_answer") or raw.get("ground_truth_answer")
-         or raw.get("Ground Truth Answer") or raw.get("answer") or "")
+         or raw.get("Ground Truth Answer") or raw.get("expectedanswer")
+         or raw.get("reference_answer_short") or raw.get("expected_answer_detailed")
+         or raw.get("answer") or "")
     answerability = raw.get("answerability", "TRUE")
     if answerability is True:
         answerability = "TRUE"
     elif answerability is False:
         answerability = "FALSE"
+    elif isinstance(answerability, str) and answerability.upper() in ("TRUE", "FALSE"):
+        answerability = answerability.upper()
+    else:
+        answerability = "TRUE"
     return {
         "question": q,
         "expected_answer": a,
         "answerability": str(answerability),
-        "question_type": raw.get("question_type") or raw.get("Question Type") or raw.get("category") or "",
-        "source_doc": raw.get("source_doc") or raw.get("Source Passage (Context)") or "",
+        "question_type": (raw.get("question_type") or raw.get("Question Type")
+                          or raw.get("category") or raw.get("tasktype") or ""),
+        "source_doc": (raw.get("source_doc") or raw.get("Source Passage (Context)")
+                       or raw.get("source_passage") or ""),
     }
 
 
@@ -96,10 +105,12 @@ def load_golden_datasets() -> list[dict]:
         with open(f) as fh:
             data = json.load(fh)
 
-            # Handle dict format with "entries" key (e.g. SBI dataset)
+            # Handle dict format with various keys
             if isinstance(data, dict):
                 if "entries" in data:
                     data = data["entries"]
+                elif "golden_dataset" in data:
+                    data = data["golden_dataset"]
                 else:
                     data = [data]
 
