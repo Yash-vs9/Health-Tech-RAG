@@ -22,14 +22,13 @@ def get_llm():
         _llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, google_api_key=api_key)
 
     elif provider == "hf":
-        from langchain_huggingface import HuggingFaceEndpoint
+        from langchain_huggingface import HuggingFaceChatEndpoint
         model = os.getenv("HF_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
         token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
         if not token:
             raise ValueError("HUGGINGFACEHUB_API_TOKEN not set.")
-        _llm = HuggingFaceEndpoint(
-            repo_id=model,
-            task="conversational",
+        _llm = HuggingFaceChatEndpoint(
+            endpoint_url=f"https://api-inference.huggingface.co/models/{model}",
             huggingfacehub_api_token=token,
             temperature=temperature,
             max_new_tokens=1024,
