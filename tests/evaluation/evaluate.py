@@ -63,6 +63,25 @@ def ingest_documents():
     return ingested
 
 
+def normalize_question(raw: dict) -> dict:
+    """Normalize different golden dataset formats into a common schema."""
+    q = raw.get("question") or raw.get("query") or raw.get("Question") or ""
+    a = (raw.get("expected_answer") or raw.get("ground_truth_answer")
+         or raw.get("Ground Truth Answer") or raw.get("answer") or "")
+    answerability = raw.get("answerability", "TRUE")
+    if answerability is True:
+        answerability = "TRUE"
+    elif answerability is False:
+        answerability = "FALSE"
+    return {
+        "question": q,
+        "expected_answer": a,
+        "answerability": str(answerability),
+        "question_type": raw.get("question_type") or raw.get("Question Type") or raw.get("category") or "",
+        "source_doc": raw.get("source_doc") or raw.get("Source Passage (Context)") or "",
+    }
+
+
 def load_golden_datasets() -> list[dict]:
     """Load all golden dataset JSONs from golden_datasets/ folder."""
     print("\n[2/5] Loading golden datasets from tests/evaluation/golden_datasets/...")
@@ -76,8 +95,27 @@ def load_golden_datasets() -> list[dict]:
     for f in files:
         with open(f) as fh:
             data = json.load(fh)
-            print(f"  Loaded: {f.name} ({len(data)} questions)")
-            questions.extend(data)
+
+            # Handle dict format with "entries" key (e.g. SBI dataset)
+            if isinstance(data, dict):
+                if "entries" in data:
+                    data = data["entries"]
+                else:
+                    data = [data]
+
+            if not isinstance(data, list):
+                continue
+
+            count = 0
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                normalized = normalize_question(item)
+                if normalized["question"]:
+                    questions.append(normalized)
+                    count += 1
+
+            print(f"  Loaded: {f.name} ({count} questions)")
 
     print(f"  Total: {len(questions)} questions")
     return questions
