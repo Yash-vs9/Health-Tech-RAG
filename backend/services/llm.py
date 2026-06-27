@@ -29,7 +29,7 @@ def get_llm():
             raise ValueError("HUGGINGFACEHUB_API_TOKEN not set.")
         _llm = HuggingFaceEndpoint(
             repo_id=model,
-            task="text-generation",
+            task="conversational",
             huggingfacehub_api_token=token,
             temperature=temperature,
             max_new_tokens=1024,
