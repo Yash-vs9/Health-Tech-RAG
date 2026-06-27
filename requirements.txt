@@ -22,6 +22,7 @@ chromadb>=0.5.0
 
 # LLM - Gemini (optional)
 langchain-google-genai>=4.2.5
+langchain-google-vertexai>=3.2.4
 
 # Document Loading
 PyMuPDF>=1.27.2.3
