@@ -32,9 +32,9 @@ def setup_logging(log_level: str | None = None):
     level_str = log_level or os.getenv("LOG_LEVEL", "INFO")
     level = getattr(logging, level_str.upper(), logging.INFO)
 
-    # Create logs directory
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    # Create logs directory — use home dir to avoid watchfiles reload loop
+    log_dir = Path.home() / ".mortgage-rag" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     log_file = log_dir / f"rag_{datetime.now().strftime('%Y%m%d')}.log"
 

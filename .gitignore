@@ -11,9 +11,6 @@ data/uploaded_pdfs/
 data/chroma_db/
 chroma_db/
 
-# Logs
-logs/
-
 # Frontend
 frontend/node_modules/
 frontend/dist/
