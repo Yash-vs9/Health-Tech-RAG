@@ -63,12 +63,14 @@ Health-Tech-RAG/
 │   ├── __init__.py
 │   ├── main.py                  # FastAPI app — 3 endpoints
 │   ├── schemas.py               # Pydantic request/response models
+│   ├── logging_config.py        # Centralized logging (console + file)
 │   └── services/
 │       ├── __init__.py
 │       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace)
 │       ├── embeddings.py        # Embedding provider (local / API)
 │       ├── vectorstore.py       # ChromaDB integration
 │       ├── ingestion.py         # PDF + DOCX → chunk → embed → store
+│       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF
 │       └── query_engine.py      # RAG: retrieve context → LLM → answer
 ├── frontend/                    # React app (Vite)
 │   ├── package.json
@@ -94,6 +96,7 @@ Health-Tech-RAG/
 │   └── chroma_db/               # Persistent ChromaDB
 ├── requirements.txt
 ├── .env.example
+├── logs.bat                     # View/tail logs from project directory
 └── README.md
 ```
 
@@ -168,6 +171,28 @@ Open **http://localhost:3000**
 | `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
 **Rule:** Never mix embedding models — use the same for indexing AND querying.
+
+### Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | Console log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+
+Logs write to `~/.mortgage-rag/logs/rag_YYYYMMDD.log` (outside project to avoid watchfiles reload loop).
+
+**View logs from project directory:**
+```bash
+logs.bat           # show today's full log
+logs.bat tail      # follow live (like tail -f)
+logs.bat dir       # open log folder in explorer
+```
+
+**What's logged at each level:**
+
+| Level | What you see |
+|-------|-------------|
+| `INFO` | Request lifecycle, ingestion progress, LLM provider init, retrieval stats, RAGAS scores |
+| `DEBUG` | Chunk RRF scores, BM25/vector hit counts, prompt token count, ChromaDB distances |
 
 ### Retriever Settings
 
