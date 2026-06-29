@@ -1,6 +1,9 @@
 import os
 import chromadb
 from chromadb.config import Settings
+from backend.logging_config import get_logger
+
+logger = get_logger("backend.vectorstore")
 
 _client: chromadb.ClientAPI | None = None
 _collection: chromadb.Collection | None = None
@@ -11,7 +14,9 @@ def get_client() -> chromadb.ClientAPI:
     if _client is None:
         db_path = os.getenv("CHROMA_DB_PATH", "./data/chroma_db")
         os.makedirs(db_path, exist_ok=True)
+        logger.info("Connecting to ChromaDB — path=%s", db_path)
         _client = chromadb.PersistentClient(path=db_path)
+        logger.info("ChromaDB connected")
     return _client
 
 
@@ -24,6 +29,7 @@ def get_collection() -> chromadb.Collection:
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+        logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
     return _collection
 
 
@@ -33,8 +39,11 @@ def add_documents(
     ids: list[str],
 ) -> dict:
     collection = get_collection()
+    logger.debug("Adding %d documents to ChromaDB", len(documents))
     collection.add(documents=documents, metadatas=metadatas, ids=ids)
-    return {"count": collection.count()}
+    count = collection.count()
+    logger.info("Documents added — new_total=%d", count)
+    return {"count": count}
 
 
 def query_documents(
@@ -47,12 +56,25 @@ def query_documents(
     if doc_ids:
         where_filter = {"doc_id": {"$in": doc_ids}}
 
+    logger.debug(
+        "ChromaDB query — n=%d, filter=%s, q=%s",
+        n_results, where_filter, query_text[:50],
+    )
     results = collection.query(
         query_texts=[query_text],
         n_results=n_results,
         where=where_filter,
         include=["documents", "metadatas", "distances"],
     )
+
+    hit_count = len(results["documents"][0]) if results["documents"] else 0
+    min_dist = min(results["distances"][0]) if results["distances"] and results["distances"][0] else None
+    max_dist = max(results["distances"][0]) if results["distances"] and results["distances"][0] else None
+    logger.debug(
+        "ChromaDB results — hits=%d, min_dist=%.4f, max_dist=%.4f",
+        hit_count, min_dist or 0, max_dist or 0,
+    )
+
     return results
 
 

@@ -28,6 +28,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
+from backend.logging_config import setup_logging, get_logger
+
+setup_logging()
+logger = get_logger("evaluation")
+
 from ragas import evaluate
 from ragas.metrics.collections import faithfulness, answer_relevancy, context_precision
 from datasets import Dataset
@@ -45,11 +50,11 @@ REPORT_DIR = Path("docs")
 
 def ingest_documents():
     """Ingest only new PDFs/DOCXs. Skips files already in ChromaDB."""
-    print("\n[1/5] Checking documents...")
+    logger.info("Step 1/5 — Checking documents...")
 
     files = list(DOCS_DIR.glob("*.pdf")) + list(DOCS_DIR.glob("*.docx"))
     if not files:
-        print("  WARNING: No PDF or DOCX files found in documents/")
+        logger.warning("No PDF or DOCX files found in %s", DOCS_DIR)
         return []
 
     collection = vectorstore.get_collection()
@@ -63,20 +68,21 @@ def ingest_documents():
     new_files = [f for f in files if f.name not in existing_files]
 
     if not new_files:
-        print(f"  All {len(files)} files already ingested — skipping")
+        logger.info("All %d files already ingested — skipping", len(files))
         return []
 
-    print(f"  Found {len(files)} files, {len(new_files)} new to ingest:")
+    logger.info("Found %d files, %d new to ingest", len(files), len(new_files))
     ingested = []
     for f in new_files:
-        print(f"  Ingesting: {f.name}")
+        logger.info("Ingesting: %s", f.name)
         with open(f, "rb") as fh:
             file_bytes = fh.read()
         result = ingestion.ingest_document(file_bytes=file_bytes, filename=f.name)
         ingested.append(result)
-        print(f"    -> doc_id: {result['doc_id']}, chunks: {result['num_chunks']}")
+        logger.info("  -> doc_id=%s, chunks=%d", result["doc_id"], result["num_chunks"])
 
-    print(f"  Ingested: {len(ingested)} new docs ({sum(i['num_chunks'] for i in ingested)} chunks)")
+    total_chunks = sum(i["num_chunks"] for i in ingested)
+    logger.info("Ingested %d new docs (%d chunks)", len(ingested), total_chunks)
     return ingested
 
 
@@ -110,12 +116,12 @@ def normalize_question(raw: dict) -> dict:
 
 def load_golden_datasets() -> list[dict]:
     """Load all golden dataset JSONs from golden_datasets/ folder."""
-    print("\n[2/5] Loading golden datasets from tests/evaluation/golden_datasets/...")
+    logger.info("Step 2/5 — Loading golden datasets...")
 
     questions = []
     files = list(GOLDEN_DIR.glob("*.json"))
     if not files:
-        print("  WARNING: No golden dataset JSON files found")
+        logger.warning("No golden dataset JSON files found in %s", GOLDEN_DIR)
         return []
 
     for f in files:
@@ -143,9 +149,9 @@ def load_golden_datasets() -> list[dict]:
                     questions.append(normalized)
                     count += 1
 
-            print(f"  Loaded: {f.name} ({count} questions)")
+            logger.info("Loaded %s — %d questions", f.name, count)
 
-    print(f"  Total: {len(questions)} questions")
+    logger.info("Total questions: %d", len(questions))
     return questions
 
 
@@ -161,7 +167,7 @@ def run_rag(question: str) -> dict:
 
 def build_dataset(questions: list[dict]) -> Dataset:
     """Run RAG on each answerable question and build RAGAS dataset."""
-    print("\n[3/5] Running RAG pipeline on answerable questions...")
+    logger.info("Step 3/5 — Running RAG pipeline on answerable questions...")
 
     data = {
         "question": [],
@@ -176,9 +182,16 @@ def build_dataset(questions: list[dict]) -> Dataset:
     for i, q in enumerate(answerable):
         question = q["question"]
         ground_truth = q["expected_answer"]
-        print(f"  [{i+1}/{len(answerable)}] Q: {question[:70]}...")
+        logger.info("[%d/%d] Q: %s", i + 1, len(answerable), question[:70])
 
+        rag_start = time.time()
         rag_result = run_rag(question)
+        rag_elapsed = time.time() - rag_start
+
+        logger.debug(
+            "  RAG done — answer_len=%d, contexts=%d, elapsed=%.1fs",
+            len(rag_result["answer"]), len(rag_result["contexts"]), rag_elapsed,
+        )
 
         data["question"].append(question)
         data["answer"].append(rag_result["answer"])
@@ -186,18 +199,23 @@ def build_dataset(questions: list[dict]) -> Dataset:
         data["ground_truth"].append(ground_truth)
 
         if i < len(answerable) - 1:
-            print(f"    waiting {RATE_LIMIT_DELAY}s (rate limit)...")
+            logger.debug("Rate limit wait — %ds", RATE_LIMIT_DELAY)
             time.sleep(RATE_LIMIT_DELAY)
 
-    print(f"  Processed: {len(answerable)} answerable, skipped: {skipped} unanswerable")
+    logger.info(
+        "RAG complete — answerable=%d, skipped=%d (unanswerable)",
+        len(answerable), skipped,
+    )
     return Dataset.from_dict(data)
 
 
 def run_evaluation():
     """Main evaluation pipeline."""
-    print("=" * 60)
-    print("Mortgage RAG — RAGAS Evaluation")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Mortgage RAG — RAGAS Evaluation")
+    logger.info("=" * 60)
+
+    eval_start = time.time()
 
     # Step 1: Ingest documents
     ingested = ingest_documents()
@@ -206,23 +224,24 @@ def run_evaluation():
     questions = load_golden_datasets()
 
     if not questions:
-        print("\nNo golden datasets found. Add JSON files to:")
-        print("  tests/evaluation/golden_datasets/")
+        logger.warning("No golden datasets found — add JSON files to %s", GOLDEN_DIR)
         return
 
     # Step 3: Build dataset by running RAG
     dataset = build_dataset(questions)
 
     if len(dataset) == 0:
-        print("\nNo answerable questions to evaluate.")
+        logger.warning("No answerable questions to evaluate")
         return
 
     # Step 4: Run RAGAS evaluation
-    print("\n[4/5] Running RAGAS evaluation...")
+    logger.info("Step 4/5 — Running RAGAS evaluation...")
+    ragas_start = time.time()
     results = evaluate(
         dataset=dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
     )
+    ragas_elapsed = time.time() - ragas_start
 
     scores = {
         "faithfulness": results["faithfulness"],
@@ -230,27 +249,30 @@ def run_evaluation():
         "context_precision": results["context_precision"],
     }
 
-    print(f"\n  Faithfulness:      {scores['faithfulness']:.3f}")
-    print(f"  Answer Relevancy:  {scores['answer_relevancy']:.3f}")
-    print(f"  Context Precision: {scores['context_precision']:.3f}")
+    logger.info("RAGAS scores computed — elapsed=%.1fs", ragas_elapsed)
+    logger.info("  Faithfulness:      %.3f", scores["faithfulness"])
+    logger.info("  Answer Relevancy:  %.3f", scores["answer_relevancy"])
+    logger.info("  Context Precision: %.3f", scores["context_precision"])
 
     # Step 5: Check targets and save report
-    print("\n[5/5] Checking targets...")
+    logger.info("Step 5/5 — Checking targets...")
     targets = {"faithfulness": 0.8, "answer_relevancy": 0.75, "context_precision": 0.7}
     all_pass = True
     for metric, target in targets.items():
         passed = scores[metric] >= target
         status = "PASS" if passed else "FAIL"
-        print(f"  {metric}: {scores[metric]:.3f} >= {target} → {status}")
+        logger.info("  %s: %.3f >= %f → %s", metric, scores[metric], target, status)
         if not passed:
             all_pass = False
 
     save_report(scores, targets, all_pass, questions, dataset, ingested)
 
-    print(f"\n{'=' * 60}")
-    print(f"Result: {'ALL TARGETS MET' if all_pass else 'SOME TARGETS MISSED'}")
-    print(f"Report saved to docs/eval_report.md")
-    print(f"{'=' * 60}")
+    total_elapsed = time.time() - eval_start
+    logger.info("=" * 60)
+    logger.info("Result: %s", "ALL TARGETS MET" if all_pass else "SOME TARGETS MISSED")
+    logger.info("Total elapsed: %.1fs", total_elapsed)
+    logger.info("Report saved to docs/eval_report.md")
+    logger.info("=" * 60)
 
 
 def save_report(scores, targets, all_pass, questions, dataset, ingested):
