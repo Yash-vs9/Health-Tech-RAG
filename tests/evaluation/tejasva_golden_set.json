@@ -1,0 +1,57 @@
+[
+  {
+    "question_id": "TQ001",
+    "question": "What symptoms of Type 2 diabetes are described in the WHO health guideline?",
+    "expected_answer": "The guideline describes increased thirst, frequent urination, fatigue, and blurred vision as common symptoms.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 12,
+    "question_type": "factual",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW",
+    "dataset_type": "citation_grounded"
+  },
+  {
+    "question_id": "TQ002",
+    "question": "Which complications are linked to delayed diagnosis of diabetes in the document?",
+    "expected_answer": "The document links delayed diagnosis to kidney, nerve, and eye complications.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 13,
+    "question_type": "multi_hop",
+    "answerability": "TRUE",
+    "hallucination_risk": "MEDIUM",
+    "dataset_type": "citation_grounded"
+  },
+  {
+    "question_id": "TQ003",
+    "question": "What screening advice is given for adults with diabetes risk factors?",
+    "expected_answer": "Adults with risk factors should receive regular screening so the condition can be detected early.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 14,
+    "question_type": "factual",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW",
+    "dataset_type": "citation_grounded"
+  },
+  {
+    "question_id": "TQ004",
+    "question": "What nutrition guidance does the medical report provide for patients managing blood sugar?",
+    "expected_answer": "The report recommends balanced meals, controlled portions, and limiting high-sugar foods.",
+    "source_doc": "medical_report.pdf",
+    "source_page": 8,
+    "question_type": "factual",
+    "answerability": "TRUE",
+    "hallucination_risk": "LOW",
+    "dataset_type": "citation_grounded"
+  },
+  {
+    "question_id": "TQ005",
+    "question": "According to the document, what follow-up action is recommended after abnormal test results?",
+    "expected_answer": "The document recommends confirming results with a clinician and scheduling a follow-up assessment.",
+    "source_doc": "who_health_guidelines.pdf",
+    "source_page": 15,
+    "question_type": "multi_hop",
+    "answerability": "TRUE",
+    "hallucination_risk": "MEDIUM",
+    "dataset_type": "citation_grounded"
+  }
+]
