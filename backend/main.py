@@ -29,7 +29,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")].split(","),
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -111,6 +111,17 @@ async def query(request: QueryRequest):
     except Exception as e:
         logger.error("Query failed — q=%s, error=%s", request.question[:80], e)
         raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+
+@app.post("/reset-collection")
+async def reset_collection():
+    """Delete and recreate ChromaDB collection. Use when switching embedding models."""
+    try:
+        vectorstore.reset_collection()
+        return {"status": "ok", "message": "Collection reset. Re-ingest your documents."}
+    except Exception as e:
+        logger.error("Collection reset failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
 # ── Auth & Session routes (Aryan's) ──────────────────────────────────────

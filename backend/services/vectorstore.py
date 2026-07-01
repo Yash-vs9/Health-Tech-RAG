@@ -93,3 +93,18 @@ def delete_by_doc_id(doc_id: str) -> int:
     collection.delete(ids=results["ids"])
     logger.info("Deleted %d chunks for doc_id=%s", len(results["ids"]), doc_id)
     return len(results["ids"])
+
+
+def reset_collection() -> None:
+    """Delete and recreate the collection. Used when switching embedding models."""
+    global _collection
+    client = get_client()
+    collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
+    try:
+        client.delete_collection(collection_name)
+        logger.info("Deleted old collection — name=%s", collection_name)
+    except Exception:
+        logger.debug("Collection %s did not exist", collection_name)
+    _collection = None
+    get_collection()
+    logger.info("Recreated collection — name=%s", collection_name)
