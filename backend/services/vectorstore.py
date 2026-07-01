@@ -97,7 +97,7 @@ def delete_by_doc_id(doc_id: str) -> int:
 
 def reset_collection() -> None:
     """Delete and recreate the collection. Used when switching embedding models."""
-    global _collection
+    global _collection, _client
     client = get_client()
     collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
     try:
@@ -105,6 +105,16 @@ def reset_collection() -> None:
         logger.info("Deleted old collection — name=%s", collection_name)
     except Exception:
         logger.debug("Collection %s did not exist", collection_name)
+    # Clear all cached references
     _collection = None
+    _client = None
+    # Also reset BM25 index in retriever
+    try:
+        from . import retriever
+        retriever._bm25_index = None
+        retriever._bm25_docs = []
+        logger.info("BM25 index cleared")
+    except Exception:
+        pass
     get_collection()
     logger.info("Recreated collection — name=%s", collection_name)
