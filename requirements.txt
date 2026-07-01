@@ -1,8 +1,9 @@
-langchain
-langchain-community
-langchain-groq
-chromadb
-sentence-transformers
-groq
-pymupdf
-python-dotenv
+# Core
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.1
+python-multipart>=0.0.9
+pydantic[email]>=2.7.4
+python-dotenv>=1.0.1
+
+# Supabase (Auth + Postgres + Storage)
+supabase>=2.7.4
