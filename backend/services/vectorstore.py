@@ -22,13 +22,24 @@ def get_client() -> chromadb.ClientAPI:
 def get_collection() -> chromadb.Collection:
     global _collection
     if _collection is None:
+        from .embeddings import get_embeddings
+
         collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
         client = get_client()
+        embeddings = get_embeddings()
+
+        # Wrap langchain Embeddings to match chromadb's EmbeddingFunction protocol
+        class _EmbeddingFunction:
+            def __call__(self, texts: list[str]) -> list[list[float]]:
+                return embeddings.embed_documents(texts)
+
         _collection = client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
+            embedding_function=_EmbeddingFunction(),
         )
-        logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
+        logger.info("Collection ready — name=%s, count=%d, embedding=Qwen3-Embedding-8B",
+                     collection_name, _collection.count())
     return _collection
 
 
