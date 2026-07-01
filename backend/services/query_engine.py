@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from typing import Any, Dict, List, Sequence
 
 from langchain_core.documents import Document
@@ -43,7 +44,7 @@ class MultiQueryService:
     def retrieve(self, generated_queries: List[str], doc_ids: List[str]) -> List[RetrievedChunk]:
         allowed_doc_ids = set(doc_ids) if doc_ids else None
         retrieved_documents = self._multi_query_retriever.invoke(generated_queries[0])
-        ranked: Dict[tuple[str, int | None, str | None], RetrievedChunk] = {}
+        ranked: Dict[str, RetrievedChunk] = {}
 
         for index, document in enumerate(retrieved_documents):
             metadata = document.metadata or {}
@@ -51,7 +52,7 @@ class MultiQueryService:
             if allowed_doc_ids and doc_id not in allowed_doc_ids:
                 continue
 
-            key = (doc_id, metadata.get("page"), metadata.get("section"))
+            key = self._chunk_identity_key(document, index)
             score = self._score_document(document, generated_queries)
             if score <= 0:
                 continue
@@ -71,6 +72,19 @@ class MultiQueryService:
             reverse=True,
         )
         return results[:5]
+
+    @staticmethod
+    def _chunk_identity_key(document: Document, index: int) -> str:
+        metadata = document.metadata or {}
+        doc_id = str(metadata.get("doc_id", "unknown"))
+        chunk_id = metadata.get("chunk_id")
+        if chunk_id:
+            return f"{doc_id}::{chunk_id}"
+
+        page = metadata.get("page")
+        section = metadata.get("section")
+        text_fingerprint = hashlib.sha1(document.page_content.encode("utf-8")).hexdigest()[:12]
+        return f"{doc_id}::{page}::{section}::{index}::{text_fingerprint}"
 
     def answer_question(self, question: str, doc_ids: List[str]) -> Dict[str, Any]:
         generated_queries = self.generate_queries(question)
