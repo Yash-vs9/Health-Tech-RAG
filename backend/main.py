@@ -43,10 +43,9 @@ async def health_check():
     try:
         count = vectorstore.get_doc_count()
         llm_provider = os.getenv("LLM_PROVIDER", "ollama")
-        embed_provider = os.getenv("EMBEDDING_PROVIDER", "local")
         logger.info(
-            "Health OK — chunks=%d, llm=%s, embeddings=%s",
-            count, llm_provider, embed_provider,
+            "Health OK — chunks=%d, llm=%s, embeddings=Qwen3-Embedding-8B",
+            count, llm_provider,
         )
         return HealthResponse(
             status="ok",

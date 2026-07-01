@@ -1,6 +1,5 @@
 import os
 import chromadb
-from chromadb.config import Settings
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.vectorstore")
@@ -20,54 +19,15 @@ def get_client() -> chromadb.ClientAPI:
     return _client
 
 
-def _get_expected_dim() -> int:
-    """Get the embedding dimension for the current provider."""
-    from backend.services.embeddings import get_embeddings
-    embeddings = get_embeddings()
-    # Embed a probe text to discover the dimension
-    probe = embeddings.embed_query("dimension check")
-    return len(probe)
-
-
 def get_collection() -> chromadb.Collection:
     global _collection
     if _collection is None:
         collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
         client = get_client()
-
-        existing = client.get_or_create_collection(
+        _collection = client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
-
-        # Validate embedding dimension matches stored collection
-        if existing.count() > 0:
-            try:
-                peek = existing.peek(limit=1)
-                stored_dim = len(peek["embeddings"][0])
-                expected_dim = _get_expected_dim()
-                if stored_dim != expected_dim:
-                    logger.warning(
-                        "Dimension mismatch — stored=%d, expected=%d. Resetting collection.",
-                        stored_dim, expected_dim,
-                    )
-                    client.delete_collection(collection_name)
-                    existing = client.get_or_create_collection(
-                        name=collection_name,
-                        metadata={"hnsw:space": "cosine"},
-                    )
-                    # Also clear BM25
-                    try:
-                        from . import retriever
-                        retriever._bm25_index = None
-                        retriever._bm25_docs = []
-                    except Exception:
-                        pass
-                    logger.info("Collection recreated — new_dim=%d", expected_dim)
-            except Exception as e:
-                logger.debug("Dimension check skipped — %s", e)
-
-        _collection = existing
         logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
     return _collection
 
@@ -135,7 +95,7 @@ def delete_by_doc_id(doc_id: str) -> int:
 
 
 def reset_collection() -> None:
-    """Delete and recreate the collection. Used when switching embedding models."""
+    """Delete and recreate the collection."""
     global _collection, _client
     client = get_client()
     collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
@@ -144,10 +104,8 @@ def reset_collection() -> None:
         logger.info("Deleted old collection — name=%s", collection_name)
     except Exception:
         logger.debug("Collection %s did not exist", collection_name)
-    # Clear all cached references
     _collection = None
     _client = None
-    # Also reset BM25 index in retriever
     try:
         from . import retriever
         retriever._bm25_index = None

@@ -157,31 +157,6 @@ def _get_multi_query_retriever():
     from .embeddings import get_embeddings
     embeddings = get_embeddings()
 
-    # Dimension check: verify stored embeddings match current provider
-    try:
-        peek = collection.peek(limit=1)
-        if peek["embeddings"]:
-            stored_dim = len(peek["embeddings"][0])
-            expected_dim = len(embeddings.embed_query("dimension probe"))
-            logger.info(
-                "Dimension check — stored=%d, expected=%d, provider=%s",
-                stored_dim, expected_dim, os.getenv("EMBEDDING_PROVIDER", "local"),
-            )
-            if stored_dim != expected_dim:
-                logger.error(
-                    "ROOT CAUSE: Embedding dimension mismatch! "
-                    "Collection has %d-dim embeddings (likely from old model), "
-                    "but current provider '%s' produces %d-dim. "
-                    "Resetting collection now.",
-                    stored_dim, os.getenv("EMBEDDING_PROVIDER", "local"), expected_dim,
-                )
-                vectorstore.reset_collection()
-                return None
-        else:
-            logger.debug("Collection empty — skipping dimension check")
-    except Exception as e:
-        logger.warning("Dimension check failed — %s", e)
-
     from langchain_chroma import Chroma
 
     vectorstore_lc = Chroma(
@@ -197,7 +172,7 @@ def _get_multi_query_retriever():
         retriever=base_retriever,
         llm=llm,
     )
-    logger.debug("MultiQueryRetriever built — embeddings=%s", os.getenv("EMBEDDING_PROVIDER", "local"))
+    logger.debug("MultiQueryRetriever built")
     return mq_retriever
 
 
@@ -214,15 +189,7 @@ def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:
         mq_elapsed = time.time() - mq_start
         logger.info("Multi-query done — expanded_docs=%d, elapsed=%.2fs", len(docs), mq_elapsed)
     except Exception as e:
-        logger.error(
-            "Multi-query failed — error=%s\n"
-            "  Provider: %s\n"
-            "  Collection: %s (count=%d)\n"
-            "  Hint: If 'dimension mismatch', run POST /reset-collection and re-ingest.",
-            e, os.getenv("EMBEDDING_PROVIDER", "local"),
-            os.getenv("CHROMA_COLLECTION", "mortgage_docs"),
-            vectorstore.get_collection().count(),
-        )
+        logger.error("Multi-query failed — %s", e)
         return []
 
     seen: dict[str, dict] = {}

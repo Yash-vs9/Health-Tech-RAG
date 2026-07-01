@@ -12,17 +12,11 @@ User Upload (PDF / DOCX)
          |
          v
     POST /ingest  -->  Document Loader  -->  Text Splitter (512/50)  -->  Embeddings
-                                                                          |
-                                                                +---------+---------+
-                                                                |                   |
-                                                          EMBEDDING_PROVIDER    EMBEDDING_PROVIDER
-                                                            = local               = api
-                                                      bge-large-en-v1.5     Qwen3-Embedding-8B
-                                                                |                   |
-                                                                +---------+---------+
-                                                                          |
-                                                                          v
-                                                                ChromaDB Vector Store
+                                                                           |
+                                                                 Qwen3-Embedding-8B (4096-dim)
+                                                                           |
+                                                                           v
+                                                                 ChromaDB Vector Store
                                                                           |
                                                                           v
 User Question  -->  POST /query  -->  Hybrid Retriever  -->  LLM  -->  Answer + Sources
@@ -125,8 +119,7 @@ Minimal local config (no API keys needed):
 ```env
 LLM_PROVIDER=ollama
 OLLAMA_MODEL=llama3.2
-EMBEDDING_PROVIDER=local
-LOCAL_EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
+HUGGINGFACEHUB_API_TOKEN=your_hf_token_here
 ```
 
 ### 3. Pull Ollama Model
@@ -164,14 +157,11 @@ Open **http://localhost:3000**
 | `hf` | Qwen/Qwen2.5-7B-Instruct | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 | `nvidia` | nemotron-3-nano-omni-30b | `NVIDIA_API_KEY` | Free tier |
 
-### Embedding Provider
+### Embedding Model
 
-| `EMBEDDING_PROVIDER` | Model | Requires | Cost |
-|----------------------|-------|----------|------|
-| `local` | bge-large-en-v1.5 | Downloads ~1.3GB first run | Free |
-| `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
-
-**Rule:** Never mix embedding models — use the same for indexing AND querying.
+| Model | Dimensions | Requires | Cost |
+|-------|-----------|----------|------|
+| Qwen3-Embedding-8B | 4096 | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
 ### Logging
 
