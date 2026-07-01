@@ -41,13 +41,13 @@ User Question  -->  POST /query  -->  Hybrid Retriever  -->  LLM  -->  Answer + 
                                  v
                          Top 5 Fused Results
                                                                            |
-                                                                 +---------+---------+---------+
-                                                                 |         |                   |
-                                                             LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
-                                                               = ollama     = gemini           = hf
-                                                             llama3.2   gemini-2.5-flash-lite  Qwen2.5-7B-Instruct
-                                                                 |         |                   |
-                                                                 +---------+---------+---------+
+                                                                  +---------+---------+---------+---------+
+                                                                  |         |         |                   |
+                                                              LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
+                                                                = ollama     = gemini     = hf            = nvidia
+                                                              llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-3-nano
+                                                                  |         |         |                   |
+                                                                  +---------+---------+---------+---------+
                                                                           |
                                                                           v
                                                                     React Frontend
@@ -162,6 +162,7 @@ Open **http://localhost:3000**
 | `ollama` | llama3.2 | Ollama installed locally | Free |
 | `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier |
 | `hf` | Qwen/Qwen2.5-7B-Instruct | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
+| `nvidia` | nemotron-3-nano-omni-30b | `NVIDIA_API_KEY` | Free tier |
 
 ### Embedding Provider
 

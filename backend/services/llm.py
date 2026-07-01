@@ -69,6 +69,22 @@ def get_llm():
         _llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, google_api_key=api_key)
         logger.info("LLM ready — Gemini model=%s", model)
 
+    elif provider == "nvidia":
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+        api_key = os.getenv("NVIDIA_API_KEY")
+        if not api_key:
+            logger.error("NVIDIA_API_KEY not set")
+            raise ValueError("NVIDIA_API_KEY not set.")
+        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+        _llm = ChatNVIDIA(
+            model=model,
+            api_key=api_key,
+            temperature=temperature,
+            top_p=float(os.getenv("NVIDIA_TOP_P", "0.95")),
+            max_tokens=int(os.getenv("NVIDIA_MAX_TOKENS", "4096")),
+        )
+        logger.info("LLM ready — NVIDIA model=%s", model)
+
     elif provider == "hf":
         token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
         if not token:
