@@ -81,3 +81,15 @@ def query_documents(
 def get_doc_count() -> int:
     collection = get_collection()
     return collection.count()
+
+
+def delete_by_doc_id(doc_id: str) -> int:
+    """Delete all chunks for a given doc_id. Returns number of chunks removed."""
+    collection = get_collection()
+    results = collection.get(where={"doc_id": doc_id})
+    if not results["ids"]:
+        logger.debug("No chunks found for doc_id=%s", doc_id)
+        return 0
+    collection.delete(ids=results["ids"])
+    logger.info("Deleted %d chunks for doc_id=%s", len(results["ids"]), doc_id)
+    return len(results["ids"])

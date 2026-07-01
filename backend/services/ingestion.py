@@ -28,8 +28,9 @@ def _load_docx(file_path: str) -> list[Document]:
     return [Document(page_content=full_text, metadata={"source": os.path.basename(file_path)})]
 
 
-def ingest_document(file_bytes: bytes, filename: str) -> dict:
-    doc_id = str(uuid.uuid4())[:12]
+def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None) -> dict:
+    if doc_id is None:
+        doc_id = str(uuid.uuid4())[:12]
     ext = os.path.splitext(filename)[1].lower()
     logger.info("Starting ingestion — file=%s, ext=%s, doc_id=%s", filename, ext, doc_id)
 

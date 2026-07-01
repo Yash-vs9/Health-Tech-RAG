@@ -14,6 +14,7 @@ from backend.schemas import (
     SourceChunk,
 )
 from backend.services import ingestion, query_engine, vectorstore
+from backend.routes import auth_routes, chat_routes, document_routes, message_routes
 
 setup_logging()
 logger = get_logger("backend.main")
@@ -22,18 +23,19 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 app = FastAPI(
     title="Mortgage RAG API",
-    description="RAG system for mortgage document Q&A, summarization, and cross-document comparison",
+    description="RAG system for mortgage document Q&A with auth, sessions, and chat history",
     version="1.0.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")].split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ── RAG endpoints (existing) ─────────────────────────────────────────────
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -109,3 +111,11 @@ async def query(request: QueryRequest):
     except Exception as e:
         logger.error("Query failed — q=%s, error=%s", request.question[:80], e)
         raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+
+# ── Auth & Session routes (Aryan's) ──────────────────────────────────────
+
+app.include_router(auth_routes.router)
+app.include_router(chat_routes.router)
+app.include_router(document_routes.router)
+app.include_router(message_routes.router)

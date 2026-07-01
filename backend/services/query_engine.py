@@ -51,7 +51,7 @@ Question: {question}
 Answer:"""
 
 
-def query_rag(question: str, doc_ids: list[str] | None = None) -> dict:
+def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
     use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
     multi_query_n = int(os.getenv("MULTI_QUERY_N", "3"))
 
@@ -97,6 +97,10 @@ def query_rag(question: str, doc_ids: list[str] | None = None) -> dict:
     # Build context
     context = "\n\n".join([r["content"] for r in results])
     logger.debug("Context built — chars=%d, chunks=%d", len(context), len(results))
+
+    # Prepend conversation history if available
+    if conversation_context:
+        context = f"Conversation history:\n{conversation_context}\n\nRelevant documents:\n{context}"
 
     # LLM call
     llm = get_llm()
