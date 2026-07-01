@@ -154,23 +154,8 @@ def _get_multi_query_retriever():
     if count == 0:
         return None
 
-    # Check for embedding dimension mismatch
     from .embeddings import get_embeddings
     embeddings = get_embeddings()
-    try:
-        test_embed = embeddings.embed_query("test")
-        expected_dim = len(test_embed)
-        # Peek at stored embedding dimension
-        peek = collection.peek(1)
-        if peek["embeddings"] and len(peek["embeddings"][0]) != expected_dim:
-            logger.warning(
-                "Embedding dimension mismatch — collection=%d, current=%d. Resetting collection.",
-                len(peek["embeddings"][0]), expected_dim,
-            )
-            vectorstore.reset_collection()
-            return None
-    except Exception as e:
-        logger.debug("Dimension check skipped — %s", e)
 
     from langchain_chroma import Chroma
 

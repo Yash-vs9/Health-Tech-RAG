@@ -17,7 +17,7 @@ User Upload (PDF / DOCX)
                                                                 |                   |
                                                           EMBEDDING_PROVIDER    EMBEDDING_PROVIDER
                                                             = local               = api
-                                                      MiniLM-L6-v2          Qwen3-Embedding-8B
+                                                      bge-large-en-v1.5     Qwen3-Embedding-8B
                                                                 |                   |
                                                                 +---------+---------+
                                                                           |
@@ -126,7 +126,7 @@ Minimal local config (no API keys needed):
 LLM_PROVIDER=ollama
 OLLAMA_MODEL=llama3.2
 EMBEDDING_PROVIDER=local
-LOCAL_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+LOCAL_EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
 ```
 
 ### 3. Pull Ollama Model
@@ -168,7 +168,7 @@ Open **http://localhost:3000**
 
 | `EMBEDDING_PROVIDER` | Model | Requires | Cost |
 |----------------------|-------|----------|------|
-| `local` | all-MiniLM-L6-v2 | Downloads ~80MB first run | Free |
+| `local` | bge-large-en-v1.5 | Downloads ~1.3GB first run | Free |
 | `api` | Qwen3-Embedding-8B | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
 **Rule:** Never mix embedding models — use the same for indexing AND querying.

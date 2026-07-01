@@ -31,7 +31,7 @@ def get_embeddings():
         logger.info("Embeddings ready — API model=%s", model)
     else:
         from langchain_huggingface import HuggingFaceEmbeddings
-        model = os.getenv("LOCAL_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        model = os.getenv("LOCAL_EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
         _embeddings = HuggingFaceEmbeddings(model_name=model)
         logger.info("Embeddings ready — local model=%s", model)
 

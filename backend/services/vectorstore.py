@@ -20,15 +20,54 @@ def get_client() -> chromadb.ClientAPI:
     return _client
 
 
+def _get_expected_dim() -> int:
+    """Get the embedding dimension for the current provider."""
+    from backend.services.embeddings import get_embeddings
+    embeddings = get_embeddings()
+    # Embed a probe text to discover the dimension
+    probe = embeddings.embed_query("dimension check")
+    return len(probe)
+
+
 def get_collection() -> chromadb.Collection:
     global _collection
     if _collection is None:
         collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
         client = get_client()
-        _collection = client.get_or_create_collection(
+
+        existing = client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
+
+        # Validate embedding dimension matches stored collection
+        if existing.count() > 0:
+            try:
+                peek = existing.peek(limit=1)
+                stored_dim = len(peek["embeddings"][0])
+                expected_dim = _get_expected_dim()
+                if stored_dim != expected_dim:
+                    logger.warning(
+                        "Dimension mismatch — stored=%d, expected=%d. Resetting collection.",
+                        stored_dim, expected_dim,
+                    )
+                    client.delete_collection(collection_name)
+                    existing = client.get_or_create_collection(
+                        name=collection_name,
+                        metadata={"hnsw:space": "cosine"},
+                    )
+                    # Also clear BM25
+                    try:
+                        from . import retriever
+                        retriever._bm25_index = None
+                        retriever._bm25_docs = []
+                    except Exception:
+                        pass
+                    logger.info("Collection recreated — new_dim=%d", expected_dim)
+            except Exception as e:
+                logger.debug("Dimension check skipped — %s", e)
+
+        _collection = existing
         logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
     return _collection
 
