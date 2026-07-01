@@ -244,11 +244,11 @@ def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:
 def _chunk_key(doc: Document, meta: dict) -> str:
     """Unique key per chunk — keeps multiple chunks from the same doc."""
     doc_id = meta.get("doc_id", "unknown")
-    chunk_id = meta.get("chunk_id")
-    if chunk_id:
-        return f"{doc_id}::{chunk_id}"
-    page = meta.get("page")
-    section = meta.get("section")
+    chunk_index = meta.get("chunk_index")
+    if chunk_index is not None:
+        return f"{doc_id}::chunk_{chunk_index}"
+    page = meta.get("page_number", meta.get("page", ""))
+    section = meta.get("section", "")
     text_hash = hashlib.sha1(doc.page_content.encode("utf-8")).hexdigest()[:12]
     return f"{doc_id}::{page}::{section}::{text_hash}"
 

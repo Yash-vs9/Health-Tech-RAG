@@ -94,8 +94,19 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
             "rrf_score": r.get("rrf_score", 0),
         })
 
-    # Build context
-    context = "\n\n".join([r["content"] for r in results])
+    # Build context with metadata for citation
+    context_parts = []
+    for i, r in enumerate(results):
+        meta = r["metadata"]
+        page = meta.get("page_number", meta.get("page", "?"))
+        section = meta.get("section", "")
+        filename = meta.get("filename", "unknown")
+        source_tag = f"[Source {i+1}: {filename}, Page {page}"
+        if section:
+            source_tag += f", Section: {section}"
+        source_tag += "]"
+        context_parts.append(f"{source_tag}\n{r['content']}")
+    context = "\n\n".join(context_parts)
     logger.debug("Context built — chars=%d, chunks=%d", len(context), len(results))
 
     # Prepend conversation history if available

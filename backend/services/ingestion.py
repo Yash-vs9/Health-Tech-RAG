@@ -74,13 +74,39 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
     documents = []
     metadatas = []
     ids = []
+    total_chunks = len(chunks)
     for i, chunk in enumerate(chunks):
         documents.append(chunk.page_content)
         meta = chunk.metadata.copy()
+
+        # Core identifiers
         meta["doc_id"] = doc_id
         meta["filename"] = filename
+        meta["chunk_index"] = i
+        meta["total_chunks"] = total_chunks
+
+        # Page number (normalize from PyMuPDF's 'page' field)
+        if "page" in meta and isinstance(meta["page"], int):
+            meta["page_number"] = meta["page"] + 1  # 0-indexed → 1-indexed
+
+        # Detect section heading from content (first line if it looks like a heading)
+        first_line = chunk.page_content.split("\n")[0].strip()
+        if len(first_line) < 100 and (
+            first_line.isupper()
+            or first_line.endswith(":")
+            or first_line.startswith("#")
+            or first_line.startswith("Section")
+            or first_line.startswith("Article")
+        ):
+            meta["section"] = first_line
+        elif "section" not in meta:
+            meta["section"] = ""
+
+        # Content preview for quick reference
+        meta["content_preview"] = chunk.page_content[:150].replace("\n", " ").strip()
+
         metadatas.append(meta)
-        ids.append(f"{doc_id}_chunk_{i}")
+        ids.append(f"{doc_id}::chunk_{i}")
 
     store_start = time.time()
     vectorstore.add_documents(documents=documents, metadatas=metadatas, ids=ids)
