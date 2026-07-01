@@ -1,8 +1,35 @@
 import os
+from typing import Dict, Any
 import chromadb
+from chromadb import Documents, EmbeddingFunction, Embeddings
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.vectorstore")
+
+_client: chromadb.ClientAPI | None = None
+_collection: chromadb.Collection | None = None
+
+
+class _Qwen3EmbeddingFunction(EmbeddingFunction):
+    """ChromaDB-compatible embedding function wrapping langchain embeddings."""
+
+    def __init__(self, langchain_embeddings):
+        self._embeddings = langchain_embeddings
+
+    def __call__(self, input: Documents) -> Embeddings:
+        return self._embeddings.embed_documents(list(input))
+
+    @staticmethod
+    def name() -> str:
+        return "qwen3-embedding-8b"
+
+    def get_config(self) -> Dict[str, Any]:
+        return {"model": "Qwen/Qwen3-Embedding-8B"}
+
+    @staticmethod
+    def build_from_config(config: Dict[str, Any]) -> "EmbeddingFunction":
+        from .embeddings import get_embeddings
+        return _Qwen3EmbeddingFunction(get_embeddings())
 
 _client: chromadb.ClientAPI | None = None
 _collection: chromadb.Collection | None = None
@@ -22,20 +49,16 @@ def get_client() -> chromadb.ClientAPI:
 def get_collection() -> chromadb.Collection:
     global _collection
     if _collection is None:
+        from .embeddings import get_embeddings
+
         collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
         client = get_client()
-
-        from chromadb.utils.embedding_functions import HuggingFaceEmbeddingFunction
-        token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-        hf_ef = HuggingFaceEmbeddingFunction(
-            api_key=token,
-            model_name="Qwen/Qwen3-Embedding-8B",
-        )
+        ef = _Qwen3EmbeddingFunction(get_embeddings())
 
         _collection = client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
-            embedding_function=hf_ef,
+            embedding_function=ef,
         )
         logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
     return _collection

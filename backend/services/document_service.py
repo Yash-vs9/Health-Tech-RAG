@@ -10,33 +10,27 @@ logger = get_logger("backend.documents")
 BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "documents")
 
 
-def upload_document(
+def create_document_row(
     user_id: str,
     chat_session_id: str,
     filename: str,
-    file_bytes: bytes,
+    file_size: int,
 ) -> dict:
+    """Create a DB row with status 'processing'. No storage upload yet."""
     client = get_admin_client()
     doc_id = str(uuid.uuid4())[:12]
-    storage_path = f"{user_id}/{doc_id}_{filename}"
 
     logger.info(
-        "Uploading document — user_id=%s, chat=%s, filename=%s, doc_id=%s",
+        "Creating document row — user_id=%s, chat=%s, filename=%s, doc_id=%s",
         user_id, chat_session_id, filename, doc_id,
-    )
-
-    client.storage.from_(BUCKET).upload(
-        path=storage_path,
-        file=file_bytes,
-        file_options={"content-type": "application/octet-stream"},
     )
 
     result = client.table("documents").insert({
         "chat_session_id": chat_session_id,
         "user_id": user_id,
         "filename": filename,
-        "storage_path": storage_path,
-        "file_size_bytes": len(file_bytes),
+        "storage_path": "",
+        "file_size_bytes": file_size,
         "doc_id": doc_id,
         "status": "processing",
     }).execute()
@@ -44,6 +38,23 @@ def upload_document(
     row = result.data[0]
     logger.info("Document row created — id=%s, doc_id=%s", row["id"], doc_id)
     return row
+
+
+def upload_to_storage(user_id: str, doc_id: str, filename: str, file_bytes: bytes) -> str:
+    """Upload file to Supabase Storage. Returns storage_path."""
+    client = get_admin_client()
+    storage_path = f"{user_id}/{doc_id}_{filename}"
+
+    client.storage.from_(BUCKET).upload(
+        path=storage_path,
+        file=file_bytes,
+        file_options={"content-type": "application/octet-stream"},
+    )
+
+    # Update the DB row with storage_path
+    client.table("documents").update({"storage_path": storage_path}).eq("doc_id", doc_id).execute()
+    logger.info("File uploaded to storage — path=%s", storage_path)
+    return storage_path
 
 
 def mark_document_ready(document_row_id: str, num_chunks: int) -> None:

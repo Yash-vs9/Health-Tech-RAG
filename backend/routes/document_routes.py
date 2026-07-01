@@ -29,24 +29,40 @@ async def upload_document(
         raise HTTPException(status_code=404, detail="Chat session not found")
 
     file_bytes = await file.read()
-    row = document_service.upload_document(
+
+    # Step 1: Create DB row (status=processing)
+    row = document_service.create_document_row(
         user_id=user["id"],
         chat_session_id=chat_session_id,
         filename=file.filename,
-        file_bytes=file_bytes,
+        file_size=len(file_bytes),
     )
 
-    # Integration: call ingestion with doc_id from DB
+    # Step 2: Ingest into ChromaDB
     try:
         result = ingestion.ingest_document(
             file_bytes=file_bytes,
             filename=file.filename,
             doc_id=row["doc_id"],
         )
-        document_service.mark_document_ready(row["id"], result["num_chunks"])
     except Exception as e:
         logger.error("Ingestion failed — doc_id=%s, error=%s", row["doc_id"], e)
         document_service.mark_document_failed(row["id"], str(e))
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
+
+    # Step 3: Upload to Supabase Storage only after ingestion succeeds
+    try:
+        document_service.upload_to_storage(
+            user_id=user["id"],
+            doc_id=row["doc_id"],
+            filename=file.filename,
+            file_bytes=file_bytes,
+        )
+        document_service.mark_document_ready(row["id"], result["num_chunks"])
+    except Exception as e:
+        logger.error("Storage upload failed — doc_id=%s, error=%s", row["doc_id"], e)
+        document_service.mark_document_failed(row["id"], str(e))
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {e}")
 
     return row
 
