@@ -155,9 +155,13 @@ def _get_multi_query_retriever():
         return None
 
     from langchain_chroma import Chroma
-    from .embeddings import get_embeddings
+    from langchain_huggingface import HuggingFaceEmbeddings
 
-    embedding_fn = get_embeddings()
+    # Must use the same embeddings the collection was built with (384-dim MiniLM)
+    # to avoid dimension mismatch when EMBEDDING_PROVIDER=api (4096-dim)
+    embedding_fn = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
     vectorstore_lc = Chroma(
         client=vectorstore.get_client(),
         collection_name=collection.name,
@@ -171,7 +175,7 @@ def _get_multi_query_retriever():
         retriever=base_retriever,
         llm=llm,
     )
-    logger.debug("MultiQueryRetriever built")
+    logger.debug("MultiQueryRetriever built — using local MiniLM-L6-v2 embeddings")
     return mq_retriever
 
 
