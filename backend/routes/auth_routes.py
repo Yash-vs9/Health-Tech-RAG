@@ -10,7 +10,7 @@ from backend.services import auth_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/signup", response_model=AuthResponse)
+@router.post("/signup")
 async def signup(req: SignupRequest):
     result = auth_service.signup_with_email(req.email, req.password, req.full_name)
     return result
