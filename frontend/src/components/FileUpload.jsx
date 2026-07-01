@@ -1,45 +1,31 @@
 import React, { useRef } from 'react';
 
-const ACCEPT = '.pdf,.docx';
-
 export default function FileUpload({ onUpload }) {
   const inputRef = useRef(null);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      onUpload(file);
-      e.target.value = '';
+    if (!file) return;
+    try {
+      await onUpload(file);
+    } catch (err) {
+      alert(`Upload failed: ${err.message}`);
     }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) onUpload(file);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
+    e.target.value = '';
   };
 
   return (
-    <div
-      className="file-upload"
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onClick={() => inputRef.current.click()}
-    >
+    <div className="file-upload">
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPT}
+        accept=".pdf,.docx"
         onChange={handleChange}
-        hidden
+        style={{ display: 'none' }}
       />
-      <div className="upload-icon">📄</div>
-      <p>Drop a PDF or DOCX here</p>
-      <p className="upload-hint">or click to browse</p>
+      <button className="btn-upload" onClick={() => inputRef.current.click()}>
+        + Upload PDF or DOCX
+      </button>
     </div>
   );
 }
