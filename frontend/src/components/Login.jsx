@@ -17,6 +17,12 @@ export default function Login({ onLogin }) {
       const result = isSignup
         ? await api.signup(email, password, name)
         : await api.login(email, password);
+      if (result.requires_email_confirmation) {
+        setError('Check your email to confirm your account, then log in.');
+        setIsSignup(false);
+        setLoading(false);
+        return;
+      }
       onLogin(result.access_token);
     } catch (err) {
       setError(err.message);
