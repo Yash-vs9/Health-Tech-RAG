@@ -30,6 +30,8 @@ def get_collection() -> chromadb.Collection:
 
         # Wrap langchain Embeddings to match chromadb's EmbeddingFunction protocol
         class _EmbeddingFunction:
+            name = "qwen3-embedding-8b"
+
             def __call__(self, texts: list[str]) -> list[list[float]]:
                 return embeddings.embed_documents(texts)
 
