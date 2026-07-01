@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+import hashlib
 import numpy as np
 from langchain_core.documents import Document
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
@@ -193,10 +194,10 @@ def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:
     seen: dict[str, dict] = {}
     for doc in docs:
         meta = doc.metadata if hasattr(doc, "metadata") else {}
-        doc_id = meta.get("doc_id", doc.page_content[:50])
-        if doc_id not in seen:
-            seen[doc_id] = {
-                "id": doc_id,
+        chunk_key = _chunk_key(doc, meta)
+        if chunk_key not in seen:
+            seen[chunk_key] = {
+                "id": meta.get("doc_id", chunk_key),
                 "content": doc.page_content,
                 "metadata": meta,
             }
@@ -204,6 +205,18 @@ def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:
     results = list(seen.values())[:n_results]
     logger.debug("Multi-query dedup — raw=%d, deduped=%d", len(docs), len(results))
     return results
+
+
+def _chunk_key(doc: Document, meta: dict) -> str:
+    """Unique key per chunk — keeps multiple chunks from the same doc."""
+    doc_id = meta.get("doc_id", "unknown")
+    chunk_id = meta.get("chunk_id")
+    if chunk_id:
+        return f"{doc_id}::{chunk_id}"
+    page = meta.get("page")
+    section = meta.get("section")
+    text_hash = hashlib.sha1(doc.page_content.encode("utf-8")).hexdigest()[:12]
+    return f"{doc_id}::{page}::{section}::{text_hash}"
 
 
 # ---------------------------------------------------------------------------
