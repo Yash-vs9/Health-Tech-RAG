@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# ChromaDB
+chroma_db/
+
+# VS Code / Cursor / Anti Gravity
+.vscode/
