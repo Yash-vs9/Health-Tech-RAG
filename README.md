@@ -1,24 +1,48 @@
-# RAG PDF Ingestion Pipeline
+# Ingestion Pipeline Enhancements
 
-A local, Python-based document ingestion pipeline for a Retrieval-Augmented Generation (RAG) system. This script loads PDF documents, splits them into context-aware chunks, generates vector embeddings using a free, local model, and persistently stores them in a Chroma vector database.
+## Overview
+
+This update extends the ingestion pipeline to improve document processing for mortgage documents.
 
 ## Features
 
-* **PDF Parsing**: Uses `PyMuPDFLoader` for fast and accurate text extraction from PDFs, including built-in document metadata.
-* **Smart Chunking**: Utilizes LangChain's `RecursiveCharacterTextSplitter` with overlapping chunks (`chunk_size=512`, `chunk_overlap=50`) to ensure context isn't lost across chunk boundaries.
-* **Embeddings**: Generates dense vector embeddings using HuggingFace's `Qwen3-Embedding-8b`.
-* **Vector Storage**: Stores embeddings and metadata locally using `ChromaDB` for fast retrieval during the querying phase.
+- Added PDF table extraction using `pdfplumber`.
+- Added DOCX parsing using `python-docx`.
+- Extracts both text and tables from DOCX documents.
+- Merges extracted tables with text before chunking.
+- Increased chunk size from **512** to **1024** with **100** characters overlap.
+- Preserves metadata such as:
+  - source
+  - page (PDF)
+  - content_type (text/table)
+  - file_type (pdf/docx)
 
-## Prerequisites
+## Dependencies
 
-* Python 3.9+
-* A virtual environment (`.venv`) is recommended.
+```
+pdfplumber
+python-docx
+```
 
-## Installation
+## Supported Formats
 
-1. Clone or download this repository to your local machine.
-2. Open your terminal and activate your virtual environment:
-   ```bash
-   source .venv/bin/activate  # On Mac/Linux
-   # or
-   .venv\Scripts\activate     # On Windows
+- PDF
+- DOCX
+
+## Workflow
+
+1. Load document.
+2. Extract text.
+3. Extract tables.
+4. Combine text and table documents.
+5. Split into chunks.
+6. Generate embeddings.
+7. Store embeddings in ChromaDB.
+
+## Validation
+
+The implementation was validated by:
+
+- Successfully extracting tables from PDF documents.
+- Successfully extracting text and tables from DOCX documents.
+- Generating chunks for both document types before embedding.
