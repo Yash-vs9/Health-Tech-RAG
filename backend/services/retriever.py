@@ -19,6 +19,7 @@ logger = get_logger("backend.retriever")
 _bm25_index = None
 _bm25_docs: list[dict] = []
 _bm25_count = 0  # tracks collection count when BM25 was last built
+_reranker = None
 
 
 def _build_bm25_index():
@@ -232,6 +233,41 @@ def _chunk_key(doc: Document, meta: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Cross-encoder reranking
+# ---------------------------------------------------------------------------
+
+RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+
+def _get_reranker():
+    """Lazy-load cross-encoder reranker model."""
+    global _reranker
+    if _reranker is None:
+        from sentence_transformers import CrossEncoder
+        logger.info("Loading reranker — model=%s", RERANK_MODEL)
+        _reranker = CrossEncoder(RERANK_MODEL)
+        logger.info("Reranker ready")
+    return _reranker
+
+
+def _rerank(query: str, hits: list[dict], top_k: int = 5) -> list[dict]:
+    """Rerank hits using cross-encoder. Returns top_k results."""
+    if not hits:
+        return hits
+
+    reranker = _get_reranker()
+    pairs = [(query, h["content"]) for h in hits]
+    scores = reranker.predict(pairs)
+
+    for hit, score in zip(hits, scores):
+        hit["rerank_score"] = float(score)
+
+    reranked = sorted(hits, key=lambda x: x["rerank_score"], reverse=True)[:top_k]
+    logger.debug("Reranked — input=%d, output=%d", len(hits), len(reranked))
+    return reranked
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -294,6 +330,14 @@ def hybrid_retrieve(
     # --- RRF fusion of all three ---
     all_vector = vector_hits + mq_hits
     fused = _rrf_fusion(all_vector, bm25_hits, top_n=n_results)
+
+    # --- Cross-encoder reranking ---
+    use_rerank = os.getenv("RERANK_ENABLED", "true").lower() == "true"
+    if use_rerank and fused:
+        rerank_start = time.time()
+        fused = _rerank(query, fused, top_k=n_results)
+        rerank_elapsed = time.time() - rerank_start
+        logger.debug("Rerank — hits=%d, elapsed=%.2fs", len(fused), rerank_elapsed)
 
     total_elapsed = time.time() - total_start
     logger.info(
