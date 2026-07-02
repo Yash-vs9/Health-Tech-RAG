@@ -1,5 +1,11 @@
 # main.py
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+print(os.getenv("MODEL_PROVIDER"))
+
 from data import get_chunks
 from db_setup import create_collection
 
@@ -57,3 +63,28 @@ for i in range(len(results['ids'][0])):
     print(f"Metadata: {results['metadatas'][0][i]}")
 
 
+# Step 7: LLM + Guardrails (NVIDIA)
+
+print("\n--- ASK QUESTION TO LLM ---")
+
+
+
+
+
+print("\n--- ASK QUESTION TO LLM ---")
+
+print("\n--- ASK QUESTION TO LLM ---")
+
+user_input = input("Enter your medical question: ")
+
+llm_choice = os.getenv("MODEL_PROVIDER")
+
+if llm_choice == "nvidia":
+    from guardrails_module.nvidia_guardrails import get_guardrails_response
+
+    response = get_guardrails_response(user_input)
+
+    print("\n--- LLM RESPONSE ---")
+    print(response["content"])
+else:
+    print(f"Unsupported LLM Provider: {llm_choice}")
