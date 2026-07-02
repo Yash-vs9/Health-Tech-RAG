@@ -70,8 +70,19 @@ def add_documents(
     ids: list[str],
 ) -> dict:
     collection = get_collection()
-    logger.debug("Adding %d documents to ChromaDB", len(documents))
-    collection.add(documents=documents, metadatas=metadatas, ids=ids)
+    batch_size = 100
+    total = len(documents)
+    logger.info("Adding %d documents to ChromaDB (batch_size=%d)", total, batch_size)
+
+    for start in range(0, total, batch_size):
+        end = min(start + batch_size, total)
+        collection.add(
+            documents=documents[start:end],
+            metadatas=metadatas[start:end],
+            ids=ids[start:end],
+        )
+        logger.debug("Batch %d-%d added", start, end)
+
     count = collection.count()
     logger.info("Documents added — new_total=%d", count)
     return {"count": count}
