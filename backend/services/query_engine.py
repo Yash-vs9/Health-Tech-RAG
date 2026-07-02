@@ -109,6 +109,10 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
     context = "\n\n".join(context_parts)
     logger.debug("Context built — chars=%d, chunks=%d", len(context), len(results))
 
+    # Log full context at DEBUG level for troubleshooting
+    for i, r in enumerate(results):
+        logger.debug("  chunk[%d] content: %s", i, r["content"][:300])
+
     # Prepend conversation history if available
     if conversation_context:
         context = f"Conversation history:\n{conversation_context}\n\nRelevant documents:\n{context}"

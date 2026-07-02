@@ -35,9 +35,9 @@ User Question  -->  POST /chats/{id}/messages  -->  Hybrid Retriever  -->  LLM  
                                                                                      |
                                                                             +---------+---------+---------+---------+
                                                                             |         |         |                   |
-                                                                        LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
-                                                                          = ollama     = gemini     = hf            = nvidia
-                                                                        llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-3-nano
+                                                                             LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
+                                                                           = ollama     = gemini     = hf            = nvidia
+                                                                         llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-nano-9b-v2
                                                                             |         |         |                   |
                                                                             +---------+---------+---------+---------+
                                                                                     |
@@ -193,7 +193,7 @@ Open **http://localhost:3000**
 | `ollama` | llama3.2 | Ollama installed locally | Free |
 | `gemini` | gemini-2.5-flash-lite | `GOOGLE_API_KEY` | Free tier |
 | `hf` | Qwen/Qwen2.5-7B-Instruct | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
-| `nvidia` | nemotron-3-nano-omni-30b | `NVIDIA_API_KEY` | Free tier |
+| `nvidia` | nemotron-nano-9b-v2 | `NVIDIA_API_KEY` | Free tier |
 
 ### Embedding Model
 
@@ -251,7 +251,7 @@ logs.bat dir       # open log folder in explorer
 | `/chats` | GET | List all chat sessions |
 | `/chats` | POST | Create new chat session |
 | `/chats/{id}` | PATCH | Rename chat |
-| `/chats/{id}` | DELETE | Delete chat + all its documents |
+| `/chats/{id}` | DELETE | Delete chat + all documents + ChromaDB chunks + Storage + local files |
 
 ### Documents
 

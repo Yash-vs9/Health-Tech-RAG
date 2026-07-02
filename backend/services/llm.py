@@ -75,7 +75,7 @@ def get_llm():
         if not api_key:
             logger.error("NVIDIA_API_KEY not set")
             raise ValueError("NVIDIA_API_KEY not set.")
-        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
         _llm = ChatNVIDIA(
             model=model,
             api_key=api_key,
