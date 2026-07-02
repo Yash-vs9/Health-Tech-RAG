@@ -1,11 +1,27 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+    try {
+      await login(email, password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,24 +56,33 @@ export default function Login() {
           <h1>Welcome back</h1>
           <p className="auth-subtitle">Sign in to access your banking dashboard</p>
 
+          {error && <div className="auth-error">{error}</div>}
+
           <div className="form-group">
             <label>Email address</label>
-            <input type="email" placeholder="you@example.com" required />
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <div className="form-group">
             <label>Password</label>
-            <input type="password" placeholder="Enter your password" required />
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
 
-          <div className="form-row">
-            <label className="checkbox-label">
-              <input type="checkbox" /> Remember me
-            </label>
-            <a href="#" className="forgot-link">Forgot password?</a>
-          </div>
-
-          <button type="submit" className="btn-primary-full">Sign In</button>
+          <button type="submit" className="btn-primary-full" disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
 
           <p className="auth-footer">
             Don't have an account? <Link to="/signup">Create one</Link>

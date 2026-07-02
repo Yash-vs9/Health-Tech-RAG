@@ -6,11 +6,11 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/health': 'http://localhost:8001',
-      '/ingest': 'http://localhost:8001',
-      '/query': 'http://localhost:8001',
-      '/auth': 'http://localhost:8001',
-      '/chats': 'http://localhost:8001',
+      '/health': 'http://localhost:8000',
+      '/ingest': 'http://localhost:8000',
+      '/query': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
+      '/chats': 'http://localhost:8000',
     },
   },
 })

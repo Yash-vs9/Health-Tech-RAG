@@ -38,6 +38,7 @@ export const api = {
   login: (email, password) =>
     request('POST', '/auth/login', { email, password }),
   me: (token) => request('GET', '/auth/me', null, token),
+  logout: (token) => request('POST', '/auth/logout', null, token),
 
   // Chats
   createChat: (token, title = 'New Chat') =>

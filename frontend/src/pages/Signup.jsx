@@ -1,11 +1,32 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+    try {
+      const data = await signup(email, password, fullName);
+      if (data.access_token) {
+        navigate("/dashboard");
+      } else {
+        setError("Account created! Please check your email to confirm.");
+      }
+    } catch (err) {
+      setError(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,26 +61,44 @@ export default function Signup() {
           <h1>Create your account</h1>
           <p className="auth-subtitle">Start analyzing your financial documents with AI</p>
 
+          {error && <div className="auth-error">{error}</div>}
+
           <div className="form-group">
             <label>Full name</label>
-            <input type="text" placeholder="John Doe" required />
+            <input
+              type="text"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
           </div>
 
           <div className="form-group">
             <label>Email address</label>
-            <input type="email" placeholder="you@example.com" required />
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <div className="form-group">
             <label>Password</label>
-            <input type="password" placeholder="Create a strong password" required />
+            <input
+              type="password"
+              placeholder="Create a strong password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
 
-          <label className="checkbox-label" style={{ marginBottom: "20px" }}>
-            <input type="checkbox" /> I agree to the Terms & Privacy Policy
-          </label>
-
-          <button type="submit" className="btn-primary-full">Create Account</button>
+          <button type="submit" className="btn-primary-full" disabled={loading}>
+            {loading ? "Creating account..." : "Create Account"}
+          </button>
 
           <p className="auth-footer">
             Already have an account? <Link to="/login">Sign in</Link>
