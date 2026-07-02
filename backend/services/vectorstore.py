@@ -123,6 +123,14 @@ def delete_by_doc_id(doc_id: str) -> int:
         return 0
     collection.delete(ids=results["ids"])
     logger.info("Deleted %d chunks for doc_id=%s", len(results["ids"]), doc_id)
+    # Invalidate BM25 cache
+    try:
+        from . import retriever
+        retriever._bm25_index = None
+        retriever._bm25_docs = []
+        retriever._bm25_count = 0
+    except Exception:
+        pass
     return len(results["ids"])
 
 

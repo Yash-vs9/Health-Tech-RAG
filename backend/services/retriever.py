@@ -18,16 +18,24 @@ logger = get_logger("backend.retriever")
 
 _bm25_index = None
 _bm25_docs: list[dict] = []
+_bm25_count = 0  # tracks collection count when BM25 was last built
 
 
 def _build_bm25_index():
     """Build BM25 index from all documents in ChromaDB."""
-    global _bm25_index, _bm25_docs
+    global _bm25_index, _bm25_docs, _bm25_count
 
     collection = vectorstore.get_collection()
     count = collection.count()
     if count == 0:
         logger.warning("BM25 index build skipped — collection is empty")
+        _bm25_index = None
+        _bm25_docs = []
+        _bm25_count = 0
+        return
+
+    # Skip rebuild if count hasn't changed
+    if _bm25_index is not None and count == _bm25_count:
         return
 
     logger.info("Building BM25 index from %d chunks...", count)
@@ -65,6 +73,7 @@ def _build_bm25_index():
 
         tokenized = [nltk.word_tokenize(doc.lower()) for doc in all_docs]
         _bm25_index = BM25Okapi(tokenized)
+        _bm25_count = count
         elapsed = time.time() - build_start
         logger.info("BM25 index built — docs=%d, elapsed=%.2fs", len(all_docs), elapsed)
     except ImportError:
@@ -76,7 +85,9 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
     """Keyword search using BM25."""
     global _bm25_index, _bm25_docs
 
-    if _bm25_index is None:
+    # Always check if index needs rebuild (handles deletions)
+    collection = vectorstore.get_collection()
+    if _bm25_index is None or collection.count() != _bm25_count:
         _build_bm25_index()
     if _bm25_index is None or not _bm25_docs:
         logger.debug("BM25 search skipped — index not available")
