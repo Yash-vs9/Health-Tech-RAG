@@ -11,40 +11,38 @@
 User Upload (PDF / DOCX)
          |
          v
-    POST /ingest  -->  Document Loader  -->  Text Splitter (512/50)  -->  Embeddings
-                                                                           |
-                                                                 Qwen3-Embedding-8B (4096-dim)
-                                                                           |
-                                                                           v
-                                                                 ChromaDB Vector Store
-                                                                          |
-                                                                          v
-User Question  -->  POST /query  -->  Hybrid Retriever  -->  LLM  -->  Answer + Sources
-                                        |
-                          +-------------+-------------+
-                          |             |             |
-                      BM25        Vector (k=5)   Multi-Query
-                    Keyword       ChromaDB       Generate N
-                    Search        Cosine         reformulations
-                          |             |             |
-                          +------+------+------+------+
-                                 |
-                          Reciprocal Rank
-                            Fusion (RRF)
-                                 |
-                                 v
-                         Top 5 Fused Results
-                                                                           |
-                                                                  +---------+---------+---------+---------+
-                                                                  |         |         |                   |
-                                                              LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
-                                                                = ollama     = gemini     = hf            = nvidia
-                                                              llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-3-nano
-                                                                  |         |         |                   |
-                                                                  +---------+---------+---------+---------+
-                                                                          |
-                                                                          v
-                                                                    React Frontend
+    POST /chats/{id}/documents  -->  Document Loader  -->  Text Splitter (512/50)  -->  Qwen3-Embedding-8B (4096-dim)
+                                                                                           |
+                                                                                           v
+                                                                                 ChromaDB Vector Store
+                                                                                           |
+                                                                                           v
+User Question  -->  POST /chats/{id}/messages  -->  Hybrid Retriever  -->  LLM  -->  Answer + Sources
+                                           |
+                             +-------------+-------------+
+                             |             |             |
+                         BM25        Vector (k=5)   Multi-Query
+                       Keyword       ChromaDB       Generate N
+                       Search        Cosine         reformulations
+                             |             |             |
+                             +------+------+------+------+
+                                    |
+                             Reciprocal Rank
+                               Fusion (RRF)
+                                    |
+                                    v
+                            Top 5 Fused Results
+                                                                                     |
+                                                                            +---------+---------+---------+---------+
+                                                                            |         |         |                   |
+                                                                        LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
+                                                                          = ollama     = gemini     = hf            = nvidia
+                                                                        llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-3-nano
+                                                                            |         |         |                   |
+                                                                            +---------+---------+---------+---------+
+                                                                                    |
+                                                                                    v
+                                                                              React Frontend
 ```
 
 ---
@@ -55,38 +53,68 @@ User Question  -->  POST /query  -->  Hybrid Retriever  -->  LLM  -->  Answer + 
 Health-Tech-RAG/
 ├── backend/
 │   ├── __init__.py
-│   ├── main.py                  # FastAPI app — 3 endpoints
+│   ├── main.py                  # FastAPI app — health, auth, chats, documents, messages
 │   ├── schemas.py               # Pydantic request/response models
 │   ├── logging_config.py        # Centralized logging (console + file)
+│   ├── db/
+│   │   └── supabase_client.py   # Supabase anon + admin clients
+│   ├── models/
+│   │   └── schemas.py           # Auth, session, document, message models
+│   ├── routes/
+│   │   ├── auth_routes.py       # POST /auth/signup, /login, /logout, /me, /google/url
+│   │   ├── chat_routes.py       # CRUD for /chats
+│   │   ├── document_routes.py   # Upload/list/delete documents in a chat
+│   │   └── message_routes.py    # Send message + get chat history
 │   └── services/
 │       ├── __init__.py
-│       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace)
-│       ├── embeddings.py        # Embedding provider (local / API)
-│       ├── vectorstore.py       # ChromaDB integration
+│       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace / NVIDIA)
+│       ├── embeddings.py        # Qwen3-Embedding-8B (4096-dim) via HuggingFace API
+│       ├── vectorstore.py       # ChromaDB integration with embedding function
 │       ├── ingestion.py         # PDF + DOCX → chunk → embed → store
 │       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF
-│       └── query_engine.py      # RAG: retrieve context → LLM → answer
-├── frontend/                    # React app (Vite)
+│       ├── query_engine.py      # RAG: retrieve context → LLM → answer
+│       ├── auth_service.py      # Supabase auth (email/password + Google OAuth)
+│       ├── session_service.py   # Chat session CRUD
+│       ├── document_service.py  # Upload to Supabase Storage, status tracking
+│       └── message_service.py   # Chat history, conversation context
+├── frontend/                    # React app (Vite + Tailwind)
 │   ├── package.json
-│   ├── vite.config.js
+│   ├── vite.config.js           # Proxy to backend:8001
 │   ├── index.html
 │   └── src/
 │       ├── main.jsx
-│       ├── App.jsx              # Main app — upload + chat
+│       ├── App.jsx              # Routes: Home, Login, Signup, Dashboard
 │       ├── App.css
-│       ├── api.js               # API client
+│       ├── api.js               # API client (auth, chats, docs, messages)
+│       ├── context/
+│       │   └── AuthContext.jsx   # Auth state (token, user)
+│       ├── pages/
+│       │   ├── Home.jsx         # Landing page
+│       │   ├── Login.jsx        # Login form
+│       │   ├── Signup.jsx       # Signup form
+│       │   └── Dashboard.jsx    # Main app (chats + chat view)
 │       └── components/
-│           ├── FileUpload.jsx   # Drag-and-drop upload
-│           ├── ChatMessage.jsx  # Chat message bubble
-│           └── CitationPanel.jsx # Source citations
+│           ├── ChatList.jsx     # Sidebar with chat sessions
+│           ├── ChatView.jsx     # Chat messages + file upload
+│           ├── Chatbox.jsx      # Chat input box
+│           ├── FileUpload.jsx   # PDF/DOCX upload
+│           ├── Navbar.jsx       # Navigation bar
+│           ├── Sidebar.jsx      # Side panel
+│           ├── FeatureCard.jsx  # Feature cards
+│           └── TeamCard.jsx     # Team member cards
+├── sql/
+│   └── schema.sql               # Supabase schema (profiles, sessions, documents, messages + RLS)
 ├── prompts/
-│   ├── health_system_prompt.txt
-│   └── ananya_prompt_test.py
+│   └── health_system_prompt.txt # System prompt with few-shot examples
 ├── tests/
-│   ├── backend/test_api.py
+│   ├── backend/
+│   │   └── test_retriever.py    # Chunk dedup tests
 │   └── evaluation/
+│       ├── documents/           # Mortgage PDFs for evaluation
+│       ├── golden_datasets/     # Golden dataset JSONs (275 questions)
+│       └── evaluate.py          # RAGAS evaluation script
 ├── data/
-│   ├── uploaded_pdfs/           # Uploaded documents
+│   ├── uploaded_pdfs/           # Uploaded documents (local)
 │   └── chroma_db/               # Persistent ChromaDB
 ├── requirements.txt
 ├── .env.example
@@ -114,24 +142,34 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Minimal local config (no API keys needed):
+Required env vars:
 
 ```env
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=llama3.2
-HUGGINGFACEHUB_API_TOKEN=your_hf_token_here
+# LLM (pick one)
+LLM_PROVIDER=nvidia
+NVIDIA_API_KEY=your_nvidia_key
+
+# Embeddings (required)
+HUGGINGFACEHUB_API_TOKEN=your_hf_token
+
+# Supabase (required for auth + chat sessions)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_STORAGE_BUCKET=documents
 ```
 
-### 3. Pull Ollama Model
+### 3. Setup Supabase
 
-```bash
-ollama pull llama3.2
-```
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run `sql/schema.sql` in the SQL Editor
+3. Create a storage bucket named `documents`
+4. Copy your project URL and keys to `.env`
 
 ### 4. Start Backend
 
 ```bash
-uvicorn backend.main:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8001
 ```
 
 ### 5. Start Frontend
@@ -182,7 +220,7 @@ logs.bat dir       # open log folder in explorer
 
 | Level | What you see |
 |-------|-------------|
-| `INFO` | Request lifecycle, ingestion progress, LLM provider init, retrieval stats, RAGAS scores |
+| `INFO` | Request lifecycle, ingestion progress, LLM provider init, retrieval stats |
 | `DEBUG` | Chunk RRF scores, BM25/vector hit counts, prompt token count, ChromaDB distances |
 
 ### Retriever Settings
@@ -196,20 +234,59 @@ logs.bat dir       # open log folder in explorer
 
 ## API Endpoints
 
-| Endpoint | Method | Accepts | Description |
-|----------|--------|---------|-------------|
-| `/health` | GET | — | Health check + provider info |
-| `/ingest` | POST | `.pdf` or `.docx` | Upload mortgage doc → chunk → embed → store |
-| `/query` | POST | JSON `{question, doc_ids}` | RAG query → answer + sources |
+### Auth
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/signup` | POST | Create account (email + password) |
+| `/auth/login` | POST | Login, returns JWT |
+| `/auth/logout` | POST | Invalidate session |
+| `/auth/me` | GET | Get current user |
+| `/auth/google/url` | GET | Get Google OAuth URL |
+
+### Chats
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chats` | GET | List all chat sessions |
+| `/chats` | POST | Create new chat session |
+| `/chats/{id}` | PATCH | Rename chat |
+| `/chats/{id}` | DELETE | Delete chat + all its documents |
+
+### Documents
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chats/{id}/documents` | GET | List documents in chat |
+| `/chats/{id}/documents` | POST | Upload PDF/DOCX → ingest → store |
+| `/chats/{id}/documents/{doc_id}` | DELETE | Delete document ( ChromaDB + Storage + local file) |
+
+### Messages
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chats/{id}/messages` | POST | Send question → RAG answer |
+| `/chats/{id}/messages` | GET | Get chat history |
+
+### Legacy (no auth)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check + provider info |
+| `/ingest` | POST | Upload and ingest a document |
+| `/query` | POST | RAG query without chat context |
+| `/reset-collection` | POST | Wipe and recreate ChromaDB collection |
 
 ---
 
 ## Frontend Features
 
+- **Auth** — Login/Signup with email + Google OAuth
+- **Dashboard** — Chat list sidebar + chat view
 - **File Upload** — drag-and-drop or click to browse, accepts PDF and DOCX
 - **Chat Interface** — ask questions about uploaded mortgage documents
-- **Citation Panel** — expandable source chunks for each answer
-- **Document List** — shows ingested documents with IDs
+- **Source Citations** — expandable source chunks for each answer
+- **Chat History** — persistent messages across sessions
 - **Auto-scroll** — chat scrolls to latest message
 
 ## Use Cases
@@ -227,7 +304,7 @@ logs.bat dir       # open log folder in explorer
 ```
 tests/evaluation/
 ├── documents/        ← Upload mortgage PDFs/DOCXs here
-├── golden_datasets/  ← Golden dataset JSONs from team members
+├── golden_datasets/  ← Golden dataset JSONs (275 questions)
 └── evaluate.py       ← Evaluation script
 ```
 
@@ -256,29 +333,14 @@ python -m tests.evaluation.evaluate
 
 ---
 
-## Team Contributions
-
-| Member | Branch | What They Built |
-|--------|--------|-----------------|
-| Lakshya | `feat/lakshya-fastapi` | FastAPI backend, ChromaDB, ingestion, query engine |
-| Soojal | `feat/soojal-chromadb` | ChromaDB collection setup |
-| Yash | `feat/yash-ingestion` | PDF ingestion pipeline |
-| Aryan | `feat/aryan-retriever` | Retriever config, QA chain |
-| Tejasva | `feat/tejasva-multiquery` | React components, tests, prompts |
-| Isha | `feat/isha-embeddings` | Embedding model testing |
-| Ananya | `feat/ananya-system-prompt` | System prompt, Gemini test |
-
----
-
 ## Important Rules
 
-1. **Never mix embedding models** — same model for indexing AND querying
+1. **Never hardcode API keys** — use `.env`
 2. **Always set chunk_overlap=50** — never 0
-3. **Never hardcode API keys** — use `.env`
-4. **Commit daily** — no version control = risk
-5. **Test retrieval before building generation**
-6. **Target RAGAS faithfulness > 0.8 before Week 3**
+3. **Commit daily** — no version control = risk
+4. **Test retrieval before building generation**
+5. **Target RAGAS faithfulness > 0.8 before Week 3**
 
 ---
 
-*AIforAll Global — Health Tech Team — Week 2 — June 2026*
+*AIforAll Global — Mortgage RAG Team — Week 2 — June 2026*
