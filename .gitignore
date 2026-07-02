@@ -5,7 +5,7 @@ venv/
 backend/venv/
 __pycache__/
 *.pyc
-
+node_modules/
 # Data
 data/uploaded_pdfs/
 data/chroma_db/
