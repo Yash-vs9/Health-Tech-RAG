@@ -6,6 +6,7 @@ class IngestResponse(BaseModel):
     doc_id: str = Field(..., description="Unique document ID after ingestion")
     filename: str = Field(..., description="Original filename")
     num_chunks: int = Field(..., description="Number of chunks created from the document")
+    num_tables: int = Field(default=0, description="Number of tables extracted")
     status: str = Field(default="success", description="Ingestion status")
 
 
