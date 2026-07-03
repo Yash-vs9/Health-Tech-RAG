@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from langchain_core.prompts import PromptTemplate
 from backend.logging_config import get_logger
@@ -10,11 +11,24 @@ from .guardrails import get_input_guardrails, get_output_guardrails
 
 logger = get_logger("backend.query_engine")
 
-SYSTEM_PROMPT = """You are a Mortgage Document Assistant.
+# Patterns that indicate greetings / small talk (skip retrieval)
+_GREETING_PATTERN = re.compile(
+    r"^\s*(hi|hello|hey|howdy|good\s*(morning|afternoon|evening|day)"
+    r"|greetings|sup|yo|hola|namaste|what'?s\s*up"
+    r"|thanks|thank\s*you|thx|bye|goodbye|see\s*ya|later"
+    r"|how\s*are\s*you|what\s*can\s*you\s*do|who\s*are\s*you"
+    r"|help|start|menu)\s*[!.?]*\s*$",
+    re.IGNORECASE,
+)
 
-Your role is to answer mortgage-related questions only from the provided mortgage documents.
+SYSTEM_PROMPT = """You are a Mortgage Document Assistant — a friendly, helpful chatbot for mortgage-related questions.
 
-Rules:
+Behavior:
+- For greetings (hi, hello, hey, good morning, etc.), respond warmly and briefly introduce yourself. Do NOT cite sources for greetings.
+- For small talk (how are you, what can you do, thanks, goodbye, etc.), respond naturally and guide the user toward asking mortgage questions.
+- For mortgage-related questions, answer ONLY from the provided documents with source citations.
+
+Rules for mortgage questions:
 1. Answer only from the provided documents.
 2. Never use external knowledge or assumptions.
 3. Every factual answer must include the source document name, page number, and section whenever available.
@@ -26,24 +40,25 @@ Rules:
 
 Few-shot Examples:
 
-Example 1: Factual Lookup with Citation
+Example 1: Greeting
+Question: hi
+Answer: Hello! I'm your Mortgage Document Assistant. I can help you find information from your mortgage documents — things like loan terms, fees, rates, and compliance requirements. What would you like to know?
+
+Example 2: Factual Lookup with Citation
 Question: What is the late fee percentage for PNB Housing loan?
 Answer: The late fee is 2% per month on the overdue amount, as stated in the PNB Housing Loan Agreement (Page 14, Section 4.2 - Late Payment Charges).
 
-Example 2: Refusal
+Example 3: Refusal
 Question: What is the current RBI repo rate?
 Answer: I don't have that information in the provided documents.
 
-Example 3: Comparison Across Documents
+Example 4: Comparison Across Documents
 Question: Which bank charges a lower processing fee — PNB or HDFC?
 Answer: PNB Housing charges a 0.50% processing fee (PNB Housing Annual Report, Page 8, Section: Processing Fee), while HDFC charges 0.75% (HDFC Annual Report, Page 22, Section: Loan Processing Charges). PNB Housing has the lower processing fee.
 
-Example 4: Summary Request
-Question: Summarize the RESPA disclosure requirements.
-Answer: Based on the RBI KYC Document (Pages 5–7, Section: Disclosure Requirements):
-1. Lenders must provide the loan estimate within 3 business days of application.
-2. Closing disclosure must be provided 3 business days before closing.
-3. Borrowers have the right to cancel within 3 business days of closing.
+Example 5: Small Talk
+Question: what can you do?
+Answer: I can help you find information from your uploaded mortgage documents — loan terms, interest rates, fees, compliance requirements, and more. Just ask a question about your mortgage documents and I'll look it up for you!
 
 Context:
 {context}
@@ -65,6 +80,27 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
             "answer": guard_result.reason,
             "sources": [],
             "blocked": True,
+        }
+
+    # ── Greeting / small talk short-circuit (skip retrieval) ───────────
+    if _GREETING_PATTERN.match(question):
+        logger.info("Greeting detected — skipping retrieval")
+        llm = get_llm()
+        greeting_prompt = (
+            "You are a friendly Mortgage Document Assistant. "
+            "Respond warmly to the user's greeting. Keep it short (1-2 sentences). "
+            "If appropriate, mention what you can help with.\n\n"
+            f"User: {question}\nAssistant:"
+        )
+        llm_start = time.time()
+        answer = llm.invoke(greeting_prompt)
+        llm_elapsed = time.time() - llm_start
+        if hasattr(answer, "content"):
+            answer = answer.content
+        logger.info("Greeting response — len=%d, elapsed=%.2fs", len(answer), llm_elapsed)
+        return {
+            "answer": answer,
+            "sources": [],
         }
 
     use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
