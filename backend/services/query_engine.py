@@ -6,6 +6,7 @@ from langchain_core.prompts import PromptTemplate
 from backend.logging_config import get_logger
 from .llm import get_llm
 from .retriever import hybrid_retrieve
+from .guardrails import get_input_guardrails, get_output_guardrails
 
 logger = get_logger("backend.query_engine")
 
@@ -52,6 +53,20 @@ Answer:"""
 
 
 def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
+    # ── Input guardrails ────────────────────────────────────────────────
+    input_guard = get_input_guardrails()
+    guard_result = input_guard.check(question)
+    if not guard_result.passed:
+        logger.warning(
+            "Input blocked by guardrails — reason=%s, severity=%s",
+            guard_result.reason, guard_result.severity,
+        )
+        return {
+            "answer": guard_result.reason,
+            "sources": [],
+            "blocked": True,
+        }
+
     use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
     multi_query_n = int(os.getenv("MULTI_QUERY_N", "3"))
 
@@ -129,6 +144,19 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
 
     if hasattr(answer, "content"):
         answer = answer.content
+
+    # ── Output guardrails ──────────────────────────────────────────────
+    output_guard = get_output_guardrails()
+    out_result = output_guard.check(answer)
+    if not out_result.passed:
+        logger.warning(
+            "Output blocked by guardrails — reason=%s", out_result.reason,
+        )
+        answer = out_result.reason
+    else:
+        answer = output_guard.sanitize(answer)
+        if out_result.reason:
+            logger.info("Output guardrail note — %s", out_result.reason)
 
     logger.info(
         "LLM response — answer_len=%d, elapsed=%.2fs",

@@ -1,50 +1,199 @@
 from __future__ import annotations
 
 import os
-from langchain_core.language_models.llms import LLM
-from langchain_core.callbacks import CallbackManagerForLLMRun
+import time
+from typing import Any
+
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from backend.logging_config import get_logger
+from .api_key_manager import get_nvidia_key_manager, get_hf_key_manager
 
 logger = get_logger("backend.llm")
 
+MAX_RETRIES = 3
+RETRY_BASE_DELAY = 2.0
 
-class HuggingFaceLLM(LLM):
-    """LLM wrapper using HuggingFace Inference Client (OpenAI-compatible)."""
-    model: str = "Qwen/Qwen2.5-7B-Instruct"
-    api_key: str = ""
-    temperature: float = 0.0
-    max_tokens: int = 1024
+
+class LoadBalancedNVIDIAChat(BaseChatModel):
+    """
+    LangChain ChatModel that wraps ChatNVIDIA with API key load balancing.
+
+    On each _generate(), it gets a key from the key manager, creates a fresh
+    ChatNVIDIA instance, and calls it. On rate limit, retries with the next key.
+    """
+
+    _key_manager: Any = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @property
     def _llm_type(self) -> str:
-        return "huggingface-inference"
-
-    def _call(
-        self,
-        prompt: str,
-        stop: list[str] | None = None,
-        run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs,
-    ) -> str:
-        from huggingface_hub import InferenceClient
-
-        logger.debug("HF LLM call — model=%s, prompt_len=%d", self.model, len(prompt))
-        client = InferenceClient(api_key=self.api_key)
-
-        completion = client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-        )
-
-        response = completion.choices[0].message.content
-        logger.debug("HF LLM response — len=%d", len(response))
-        return response
+        return "load-balanced-nvidia"
 
     @property
     def _identifying_params(self) -> dict:
-        return {"model": self.model}
+        return {
+            "model": os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2"),
+            "provider": "nvidia",
+            "load_balanced": True,
+        }
+
+    def _get_key_manager(self):
+        if self._key_manager is None:
+            self._key_manager = get_nvidia_key_manager()
+        return self._key_manager
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+
+        km = self._get_key_manager()
+        temperature = float(os.getenv("LLM_TEMPERATURE", "0.0"))
+        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
+        top_p = float(os.getenv("NVIDIA_TOP_P", "0.95"))
+        max_tokens = int(os.getenv("NVIDIA_MAX_TOKENS", "4096"))
+
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            api_key = km.get_key()
+            try:
+                llm = ChatNVIDIA(
+                    model=model,
+                    api_key=api_key,
+                    temperature=temperature,
+                    top_p=top_p,
+                    max_tokens=max_tokens,
+                )
+                result = llm._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+                km.report_success(api_key)
+                return result
+            except Exception as e:
+                last_error = e
+                km.report_error(api_key, e)
+                err_str = str(e).lower()
+                is_rate_limit = "429" in err_str or "rate limit" in err_str or "too many" in err_str
+                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                    delay = RETRY_BASE_DELAY * (2 ** attempt)
+                    logger.warning(
+                        "NVIDIA rate limit (attempt %d/%d) — retrying in %.1fs",
+                        attempt + 1, MAX_RETRIES, delay,
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
+        raise last_error
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        # For now, fall back to sync _generate
+        return self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+
+class LoadBalancedHuggingFaceChat(BaseChatModel):
+    """
+    LangChain ChatModel that wraps HuggingFace Inference API with key load balancing.
+    """
+
+    _key_manager: Any = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @property
+    def _llm_type(self) -> str:
+        return "load-balanced-huggingface"
+
+    @property
+    def _identifying_params(self) -> dict:
+        return {
+            "model": os.getenv("HF_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct"),
+            "provider": "huggingface",
+            "load_balanced": True,
+        }
+
+    def _get_key_manager(self):
+        if self._key_manager is None:
+            self._key_manager = get_hf_key_manager()
+        return self._key_manager
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        from huggingface_hub import InferenceClient
+
+        km = self._get_key_manager()
+        model = os.getenv("HF_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        temperature = float(os.getenv("LLM_TEMPERATURE", "0.0"))
+        max_tokens = int(os.getenv("HF_LLM_MAX_TOKENS", "1024"))
+
+        # Convert messages to HF format
+        hf_messages = []
+        for msg in messages:
+            role = "user"
+            if hasattr(msg, "type"):
+                if msg.type == "system":
+                    role = "system"
+                elif msg.type == "ai":
+                    role = "assistant"
+            hf_messages.append({"role": role, "content": msg.content})
+
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            api_key = km.get_key()
+            try:
+                client = InferenceClient(api_key=api_key)
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=hf_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                content = completion.choices[0].message.content
+                km.report_success(api_key)
+                return ChatResult(
+                    generations=[ChatGeneration(message=AIMessage(content=content))]
+                )
+            except Exception as e:
+                last_error = e
+                km.report_error(api_key, e)
+                err_str = str(e).lower()
+                is_rate_limit = "429" in err_str or "rate limit" in err_str or "too many" in err_str
+                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                    delay = RETRY_BASE_DELAY * (2 ** attempt)
+                    logger.warning(
+                        "HuggingFace rate limit (attempt %d/%d) — retrying in %.1fs",
+                        attempt + 1, MAX_RETRIES, delay,
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
+        raise last_error
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        return self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
 
 
 _llm = None
@@ -70,34 +219,18 @@ def get_llm():
         logger.info("LLM ready — Gemini model=%s", model)
 
     elif provider == "nvidia":
-        from langchain_nvidia_ai_endpoints import ChatNVIDIA
-        api_key = os.getenv("NVIDIA_API_KEY")
-        if not api_key:
-            logger.error("NVIDIA_API_KEY not set")
-            raise ValueError("NVIDIA_API_KEY not set.")
-        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
-        _llm = ChatNVIDIA(
-            model=model,
-            api_key=api_key,
-            temperature=temperature,
-            top_p=float(os.getenv("NVIDIA_TOP_P", "0.95")),
-            max_tokens=int(os.getenv("NVIDIA_MAX_TOKENS", "4096")),
+        _llm = LoadBalancedNVIDIAChat()
+        logger.info(
+            "LLM ready — NVIDIA (load-balanced, model=%s)",
+            os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2"),
         )
-        logger.info("LLM ready — NVIDIA model=%s", model)
 
     elif provider == "hf":
-        token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-        if not token:
-            logger.error("HUGGINGFACEHUB_API_TOKEN not set")
-            raise ValueError("HUGGINGFACEHUB_API_TOKEN not set.")
-        model = os.getenv("HF_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
-        _llm = HuggingFaceLLM(
-            model=model,
-            api_key=token,
-            temperature=temperature,
-            max_tokens=1024,
+        _llm = LoadBalancedHuggingFaceChat()
+        logger.info(
+            "LLM ready — HuggingFace (load-balanced, model=%s)",
+            os.getenv("HF_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct"),
         )
-        logger.info("LLM ready — HuggingFace model=%s", model)
 
     else:
         from langchain_community.llms import Ollama
