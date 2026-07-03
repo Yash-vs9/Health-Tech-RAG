@@ -26,8 +26,10 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
 
     _key_manager: Any = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        pass
 
     @property
     def _llm_type(self) -> str:
@@ -109,8 +111,10 @@ class LoadBalancedHuggingFaceChat(BaseChatModel):
 
     _key_manager: Any = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        pass
 
     @property
     def _llm_type(self) -> str:
