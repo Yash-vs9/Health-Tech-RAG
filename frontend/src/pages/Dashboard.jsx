@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const pollingRef = useRef(null);
 
   useEffect(() => {
     if (!token) {
@@ -23,6 +24,45 @@ export default function Dashboard() {
     }
     loadChats();
   }, [token]);
+
+  // Poll for document status updates every 5s while any doc is "processing"
+  useEffect(() => {
+    if (!activeChat) return;
+
+    const hasProcessing = docs.some(d => d.status === 'processing');
+
+    if (hasProcessing && !pollingRef.current) {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const freshDocs = await api.listDocs(token, activeChat.id);
+          setDocs((prev) => {
+            // Merge: keep in-progress uploads that aren't in freshDocs yet
+            const freshMap = new Map(freshDocs.map(d => [d.id, d]));
+            const merged = prev.map(d => {
+              const updated = freshMap.get(d.id);
+              if (updated) { freshMap.delete(d.id); return updated; }
+              return d;
+            });
+            // Add any docs from server we didn't have
+            for (const d of freshMap.values()) merged.push(d);
+            return merged;
+          });
+        } catch (err) {
+          console.error('Polling failed:', err);
+        }
+      }, 5000);
+    } else if (!hasProcessing && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [docs, activeChat, token]);
 
   const loadChats = async () => {
     try {
