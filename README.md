@@ -229,6 +229,7 @@ logs.bat dir       # open log folder in explorer
 |----------|---------|-------------|
 | `MULTI_QUERY_ENABLED` | `true` | Generate N reformulated queries for better recall |
 | `MULTI_QUERY_N` | `3` | Number of reformulated queries per question |
+| `RETRIEVER_TOP_K` | `10` | Number of chunks retrieved and sent to LLM |
 
 ---
 

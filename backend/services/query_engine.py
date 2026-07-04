@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import time
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
 from backend.logging_config import get_logger
 from .llm import get_llm
@@ -29,14 +30,13 @@ Behavior:
 - For mortgage-related questions, answer ONLY from the provided documents with source citations.
 
 Rules for mortgage questions:
-1. Answer only from the provided documents.
-2. Never use external knowledge or assumptions.
-3. Every factual answer must include the source document name, page number, and section whenever available.
-4. Keep answers short and precise (2-4 sentences maximum).
-5. If the answer is not found in the provided documents, reply exactly:
+1. Carefully read ALL the provided context chunks. The answer may span multiple chunks — piece it together.
+2. Extract exact figures, dates, and names from the context. Do not round numbers.
+3. Never use external knowledge or assumptions. Stay strictly within the provided documents.
+4. Include source citation (document name, page, section) for every fact.
+5. If you cannot find the answer after thoroughly checking ALL context chunks, reply:
    "I don't have that information in the provided documents."
 6. Do not make up information.
-7. Never include information that is not supported by the provided documents.
 
 Few-shot Examples:
 
@@ -58,9 +58,9 @@ Answer: PNB Housing charges a 0.50% processing fee (PNB Housing Annual Report, P
 
 Example 5: Small Talk
 Question: what can you do?
-Answer: I can help you find information from your uploaded mortgage documents — loan terms, interest rates, fees, compliance requirements, and more. Just ask a question about your mortgage documents and I'll look it up for you!
+Answer: I can help you find information from your uploaded mortgage documents — loan terms, interest rates, fees, compliance requirements, and more. Just ask a question about your mortgage documents and I'll look it up for you!"""
 
-Context:
+USER_PROMPT = """Context:
 {context}
 
 Question: {question}
@@ -105,17 +105,18 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
 
     use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
     multi_query_n = int(os.getenv("MULTI_QUERY_N", "3"))
+    retrieve_k = int(os.getenv("RETRIEVER_TOP_K", "10"))
 
     logger.info(
-        "RAG query — q=%s, doc_ids=%s, multi_query=%s (n=%d)",
-        question[:80], doc_ids, use_multi_query, multi_query_n,
+        "RAG query — q=%s, doc_ids=%s, multi_query=%s (n=%d), top_k=%d",
+        question[:80], doc_ids, use_multi_query, multi_query_n, retrieve_k,
     )
 
     # Retrieve
     retrieve_start = time.time()
     results = hybrid_retrieve(
         query=question,
-        n_results=5,
+        n_results=retrieve_k,
         doc_ids=doc_ids or None,
         use_multi_query=use_multi_query,
         multi_query_n=multi_query_n,
@@ -168,14 +169,19 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
     if conversation_context:
         context = f"Conversation history:\n{conversation_context}\n\nRelevant documents:\n{context}"
 
-    # LLM call
+    # LLM call with proper SystemMessage + HumanMessage
     llm = get_llm()
-    prompt = PromptTemplate(template=SYSTEM_PROMPT, input_variables=["context", "question"])
-    filled = prompt.format(context=context, question=question)
-    logger.debug("Prompt built — tokens≈%d", len(filled.split()))
+    user_prompt = PromptTemplate(template=USER_PROMPT, input_variables=["context", "question"])
+    user_content = user_prompt.format(context=context, question=question)
+    logger.debug("Prompt built — tokens≈%d", len(user_content.split()))
+
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=user_content),
+    ]
 
     llm_start = time.time()
-    answer = llm.invoke(filled)
+    answer = llm.invoke(messages)
     llm_elapsed = time.time() - llm_start
 
     if hasattr(answer, "content"):

@@ -20,7 +20,6 @@ Flow:
 
 import json
 import os
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -34,10 +33,13 @@ setup_logging()
 logger = get_logger("evaluation")
 
 from ragas import evaluate
-from ragas.metrics.collections import faithfulness, answer_relevancy, context_precision
+from ragas.metrics.collections import Faithfulness, AnswerRelevancy, ContextPrecision
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
 from datasets import Dataset
 
 from backend.services import ingestion, query_engine, vectorstore
+from backend.services.llm import get_llm
 
 RATE_LIMIT_DELAY = 7  # seconds between LLM calls (free tier: ~10 req/min)
 
@@ -184,19 +186,23 @@ def build_dataset(questions: list[dict]) -> Dataset:
         ground_truth = q["expected_answer"]
         logger.info("[%d/%d] Q: %s", i + 1, len(answerable), question[:70])
 
-        rag_start = time.time()
-        rag_result = run_rag(question)
-        rag_elapsed = time.time() - rag_start
+        try:
+            rag_start = time.time()
+            rag_result = run_rag(question)
+            rag_elapsed = time.time() - rag_start
 
-        logger.debug(
-            "  RAG done — answer_len=%d, contexts=%d, elapsed=%.1fs",
-            len(rag_result["answer"]), len(rag_result["contexts"]), rag_elapsed,
-        )
+            logger.debug(
+                "  RAG done — answer_len=%d, contexts=%d, elapsed=%.1fs",
+                len(rag_result["answer"]), len(rag_result["contexts"]), rag_elapsed,
+            )
 
-        data["question"].append(question)
-        data["answer"].append(rag_result["answer"])
-        data["contexts"].append(rag_result["contexts"])
-        data["ground_truth"].append(ground_truth)
+            data["question"].append(question)
+            data["answer"].append(rag_result["answer"])
+            data["contexts"].append(rag_result["contexts"])
+            data["ground_truth"].append(ground_truth)
+        except Exception as e:
+            logger.error("[%d/%d] RAG failed for '%s': %s", i + 1, len(answerable), question[:50], e)
+            continue
 
         if i < len(answerable) - 1:
             logger.debug("Rate limit wait — %ds", RATE_LIMIT_DELAY)
@@ -207,6 +213,34 @@ def build_dataset(questions: list[dict]) -> Dataset:
         len(answerable), skipped,
     )
     return Dataset.from_dict(data)
+
+
+def _build_ragas_llm():
+    """Build a RAGAS-compatible LangchainLLMWrapper from the current LLM provider."""
+    app_llm = get_llm()
+    return LangchainLLMWrapper(app_llm)
+
+
+def _build_ragas_embeddings():
+    """Build a RAGAS-compatible LangchainEmbeddingsWrapper using the first HF key."""
+    from langchain_huggingface import HuggingFaceEndpointEmbeddings
+
+    token = os.getenv("HUGGINGFACEHUB_API_TOKEN", "")
+    hf_keys = os.getenv("HF_API_KEYS", "")
+    if hf_keys:
+        token = hf_keys.split(",")[0].strip().strip('"').strip("'")
+
+    if not token:
+        raise ValueError(
+            "No HuggingFace API token found. Set HUGGINGFACEHUB_API_TOKEN or HF_API_KEYS in .env"
+        )
+
+    emb = HuggingFaceEndpointEmbeddings(
+        model="Qwen/Qwen3-Embedding-8B",
+        task="feature-extraction",
+        huggingfacehub_api_token=token,
+    )
+    return LangchainEmbeddingsWrapper(emb)
 
 
 def run_evaluation():
@@ -236,17 +270,27 @@ def run_evaluation():
 
     # Step 4: Run RAGAS evaluation
     logger.info("Step 4/5 — Running RAGAS evaluation...")
+
+    ragas_llm = _build_ragas_llm()
+    ragas_embeddings = _build_ragas_embeddings()
+    logger.info("RAGAS wrappers ready — using app LLM + HF embeddings")
+
     ragas_start = time.time()
     results = evaluate(
         dataset=dataset,
-        metrics=[faithfulness, answer_relevancy, context_precision],
+        metrics=[
+            Faithfulness(llm=ragas_llm),
+            AnswerRelevancy(llm=ragas_llm, embeddings=ragas_embeddings),
+            ContextPrecision(llm=ragas_llm),
+        ],
     )
     ragas_elapsed = time.time() - ragas_start
 
+    df = results.to_pandas()
     scores = {
-        "faithfulness": results["faithfulness"],
-        "answer_relevancy": results["answer_relevancy"],
-        "context_precision": results["context_precision"],
+        "faithfulness": float(df["faithfulness"].mean()),
+        "answer_relevancy": float(df["answer_relevancy"].mean()),
+        "context_precision": float(df["context_precision"].mean()),
     }
 
     logger.info("RAGAS scores computed — elapsed=%.1fs", ragas_elapsed)
