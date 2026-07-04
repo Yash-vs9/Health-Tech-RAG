@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const pollingRef = useRef(null);
 
   useEffect(() => {
@@ -119,6 +120,19 @@ export default function Dashboard() {
     }
   };
 
+  const handleRenameChat = async (chatId, newTitle) => {
+    if (!newTitle.trim()) return;
+    try {
+      const updated = await api.renameChat(token, chatId, newTitle.trim());
+      setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, title: updated.title } : c)));
+      if (activeChat?.id === chatId) {
+        setActiveChat((prev) => ({ ...prev, title: updated.title }));
+      }
+    } catch (err) {
+      console.error("Failed to rename chat:", err);
+    }
+  };
+
   const handleSendMessage = async (question) => {
     if (!activeChat) return;
     const userMsg = { role: "user", content: question };
@@ -173,24 +187,45 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <ChatList
-        chats={chats}
-        activeChat={activeChat}
-        onSelect={handleSelectChat}
-        onNew={handleNewChat}
-        onDelete={handleDeleteChat}
-        user={user}
-        onLogout={handleLogout}
-      />
-      <ChatView
-        chat={activeChat}
-        messages={messages}
-        docs={docs}
-        onSend={handleSendMessage}
-        onUpload={handleUpload}
-        onDeleteDoc={handleDeleteDoc}
-        loading={loading}
-      />
+      <div className={`chat-list-panel ${sidebarOpen ? 'open' : 'closed'}`}>
+        <ChatList
+          chats={chats}
+          activeChat={activeChat}
+          onSelect={handleSelectChat}
+          onNew={handleNewChat}
+          onDelete={handleDeleteChat}
+          onRename={handleRenameChat}
+          user={user}
+          onLogout={handleLogout}
+        />
+      </div>
+      <div className="main-area">
+        <div className="sidebar-edge-toggle" onClick={() => setSidebarOpen((v) => !v)} title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {sidebarOpen ? (
+              <>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </>
+            ) : (
+              <>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="15" y1="3" x2="15" y2="21" />
+              </>
+            )}
+          </svg>
+        </div>
+        <ChatView
+          chat={activeChat}
+          messages={messages}
+          docs={docs}
+          onSend={handleSendMessage}
+          onUpload={handleUpload}
+          onDeleteDoc={handleDeleteDoc}
+          onRename={handleRenameChat}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }

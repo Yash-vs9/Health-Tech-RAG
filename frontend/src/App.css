@@ -543,6 +543,199 @@ img { max-width: 100%; }
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+/* ===== SIDEBAR SLIDING PANEL ===== */
+.chat-list-panel {
+  width: 280px;
+  flex-shrink: 0;
+  transition: width 0.25s ease, opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.chat-list-panel.closed {
+  width: 0;
+  opacity: 0;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+  transition: margin-left 0.25s ease;
+}
+
+/* ===== SIDEBAR EDGE TOGGLE (ChatGPT-style) ===== */
+.sidebar-edge-toggle {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  z-index: 20;
+  width: 28px;
+  height: 32px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  padding: 0;
+  box-shadow: 1px 0 3px rgba(0,0,0,0.05);
+}
+
+.sidebar-edge-toggle:hover {
+  color: var(--accent);
+  background: var(--bg);
+  border-color: var(--accent);
+  width: 30px;
+}
+
+/* Remove old chat-header sidebar toggle */
+.chat-header-left .sidebar-toggle-btn {
+  display: none;
+}
+
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== INLINE CHAT TITLE RENAME ===== */
+.chat-title-input {
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+  background: var(--white);
+  color: var(--text);
+  font-family: inherit;
+  min-width: 150px;
+}
+
+.chat-view .chat-header h3 {
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: border-color .15s;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.chat-view .chat-header h3:hover {
+  background: var(--bg);
+  border-bottom-color: var(--border);
+}
+
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== DOCS PANEL COLLAPSIBLE ===== */
+.docs-panel {
+  padding: 0 28px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.docs-panel.expanded {
+  max-height: 300px;
+  padding: 12px 28px;
+}
+
+.docs-panel.collapsed {
+  max-height: 36px;
+  padding: 6px 28px;
+}
+
+.docs-panel-header {
+  display: flex;
+  align-items: center;
+}
+
+.docs-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  transition: color .15s;
+}
+
+.docs-toggle-btn:hover {
+  color: var(--accent);
+}
+
+.docs-toggle-arrow {
+  font-size: 11px;
+  transition: transform .2s;
+}
+
+.docs-toggle-label {
+  font-weight: 600;
+}
+
+/* ===== CHAT ITEM RENAME ===== */
+.chat-item-actions {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.chat-item:hover .chat-item-actions {
+  opacity: 1;
+}
+
+.btn-rename {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color .15s;
+  line-height: 1;
+}
+
+.btn-rename:hover {
+  color: #f59e0b;
+}
+
+.chat-rename-input {
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  background: #1e293b;
+  color: white;
+  font-family: inherit;
+  width: calc(100% - 40px);
 }
 
 /* ===== SIDEBAR ===== */
@@ -942,7 +1135,6 @@ img { max-width: 100%; }
   margin-bottom: 4px;
   position: relative;
 }
-
 .chat-item:hover { background: #1e293b; }
 .chat-item.active { background: #1e293b; }
 
@@ -962,20 +1154,17 @@ img { max-width: 100%; }
 }
 
 .btn-delete {
-  position: absolute;
-  top: 10px;
-  right: 8px;
   background: none;
   border: none;
   color: #64748b;
   font-size: 16px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity .15s, color .15s;
-  padding: 2px 6px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color .15s;
+  line-height: 1;
 }
 
-.chat-item:hover .btn-delete { opacity: 1; }
 .btn-delete:hover { color: #ef4444; }
 
 .chat-list-footer {
