@@ -137,7 +137,16 @@ class APIKeyManager:
     def report_error(self, key: str, error: Exception) -> None:
         """Report a transient error (may or may not be rate limit related)."""
         err_str = str(error).lower()
-        if "429" in err_str or "rate limit" in err_str or "too many" in err_str:
+        is_retryable = (
+            "429" in err_str
+            or "402" in err_str
+            or "rate limit" in err_str
+            or "too many" in err_str
+            or "depleted" in err_str
+            or "credits" in err_str
+            or "payment required" in err_str
+        )
+        if is_retryable:
             self.report_rate_limit(key)
         elif "401" in err_str or "403" in err_str or "unauthorized" in err_str:
             logger.error("Auth error with key %s...: %s", key[:8], error)

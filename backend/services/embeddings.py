@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from backend.logging_config import get_logger
 from .api_key_manager import get_hf_key_manager
@@ -12,6 +13,8 @@ EMBEDDING_DIM = 4096
 
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 2.0
+
+_RETRYABLE = re.compile(r"429|402|rate limit|too many|depleted|credits|payment required")
 
 
 class LoadBalancedEmbeddings:
@@ -52,13 +55,10 @@ class LoadBalancedEmbeddings:
                 last_error = e
                 self._key_manager.report_error(api_key, e)
 
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "rate limit" in err_str or "too many" in err_str
-
-                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                if _RETRYABLE.search(str(e)) and attempt < MAX_RETRIES - 1:
                     delay = RETRY_BASE_DELAY * (2 ** attempt)
                     logger.warning(
-                        "Embeddings rate limit (attempt %d/%d) — retrying in %.1fs",
+                        "Embeddings error (attempt %d/%d) — retrying in %.1fs",
                         attempt + 1, MAX_RETRIES, delay,
                     )
                     time.sleep(delay)
@@ -82,10 +82,7 @@ class LoadBalancedEmbeddings:
                 last_error = e
                 self._key_manager.report_error(api_key, e)
 
-                err_str = str(e).lower()
-                is_rate_limit = "429" in err_str or "rate limit" in err_str or "too many" in err_str
-
-                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                if _RETRYABLE.search(str(e)) and attempt < MAX_RETRIES - 1:
                     delay = RETRY_BASE_DELAY * (2 ** attempt)
                     logger.warning(
                         "Embeddings rate limit (attempt %d/%d) — retrying in %.1fs",
