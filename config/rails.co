@@ -9,3 +9,41 @@ define bot express greeting
 define flow greeting
   user express greeting
   bot express greeting
+
+define user ask non medical
+  "Who won the IPL?"
+  "Tell me a joke"
+  "Write Python code"
+  "How do I hack WiFi?"
+
+define bot refuse non medical
+  "I'm designed to answer healthcare-related questions only."
+
+define flow refuse_non_medical
+  user ask non medical
+  bot refuse non medical
+
+
+define user medical emergency
+  "I am having chest pain"
+  "I cannot breathe"
+  "Someone is unconscious"
+
+define bot emergency_response
+  "This may be a medical emergency. Please seek immediate medical attention or contact your local emergency services."
+
+define flow emergency_flow
+  user medical emergency
+  bot emergency_response
+
+define user ask diagnosis
+  "Do I have cancer?"
+  "Do I have diabetes?"
+  "Can you diagnose me?"
+
+define bot diagnosis_response
+  "I cannot diagnose medical conditions. Please consult a qualified healthcare professional for an accurate diagnosis."
+
+define flow diagnosis_flow
+  user ask diagnosis
+  bot diagnosis_response
