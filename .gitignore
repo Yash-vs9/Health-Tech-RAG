@@ -26,4 +26,4 @@ sample_pdf.pdf
 # OS
 .DS_Store
 Thumbs.db
-opencode.json
+tests/evaluation/*.json

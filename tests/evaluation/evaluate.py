@@ -2,7 +2,11 @@
 RAGAS Evaluation Script for Mortgage RAG Pipeline.
 
 Usage:
+    # Full run (ingestion + RAG + evaluation)
     python -m tests.evaluation.evaluate
+
+    # Resume from step 4 only (skips ingestion and RAG pipeline)
+    python -m tests.evaluation.evaluate --resume
 
 Structure:
     tests/evaluation/
@@ -13,7 +17,7 @@ Structure:
 Flow:
     1. Ingest all documents from documents/
     2. Load all golden datasets from golden_datasets/
-    3. Run RAG pipeline on each question
+    3. Run RAG pipeline on each question (saved to checkpoint)
     4. Evaluate with RAGAS metrics
     5. Save report to docs/eval_report.md
 """
@@ -33,7 +37,7 @@ setup_logging()
 logger = get_logger("evaluation")
 
 from ragas import evaluate
-from ragas.metrics.collections import Faithfulness, AnswerRelevancy, ContextPrecision
+from ragas.metrics import faithfulness, answer_relevancy, context_precision
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from datasets import Dataset
@@ -43,11 +47,11 @@ from backend.services.llm import get_llm
 
 RATE_LIMIT_DELAY = 7  # seconds between LLM calls (free tier: ~10 req/min)
 
-
 EVAL_DIR = Path("tests/evaluation")
 DOCS_DIR = EVAL_DIR / "documents"
 GOLDEN_DIR = EVAL_DIR / "golden_datasets"
 REPORT_DIR = Path("docs")
+CHECKPOINT_FILE = EVAL_DIR / "checkpoint_dataset.json"
 
 
 def ingest_documents():
@@ -127,7 +131,7 @@ def load_golden_datasets() -> list[dict]:
         return []
 
     for f in files:
-        with open(f) as fh:
+        with open(f, encoding="utf-8") as fh:
             data = json.load(fh)
 
             # Handle dict format with various keys
@@ -167,6 +171,23 @@ def run_rag(question: str) -> dict:
     }
 
 
+def _save_checkpoint(data: dict) -> None:
+    """Save the RAG dataset to a checkpoint file for resume."""
+    with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    logger.info("Checkpoint saved — %d questions", len(data["question"]))
+
+
+def _load_checkpoint() -> dict | None:
+    """Load a previously saved checkpoint."""
+    if not CHECKPOINT_FILE.exists():
+        return None
+    with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    logger.info("Checkpoint loaded — %d questions", len(data["question"]))
+    return data
+
+
 def build_dataset(questions: list[dict]) -> Dataset:
     """Run RAG on each answerable question and build RAGAS dataset."""
     logger.info("Step 3/5 — Running RAG pipeline on answerable questions...")
@@ -204,6 +225,9 @@ def build_dataset(questions: list[dict]) -> Dataset:
             logger.error("[%d/%d] RAG failed for '%s': %s", i + 1, len(answerable), question[:50], e)
             continue
 
+        # Save checkpoint after each question to allow partial resume
+        _save_checkpoint(data)
+
         if i < len(answerable) - 1:
             logger.debug("Rate limit wait — %ds", RATE_LIMIT_DELAY)
             time.sleep(RATE_LIMIT_DELAY)
@@ -216,53 +240,73 @@ def build_dataset(questions: list[dict]) -> Dataset:
 
 
 def _build_ragas_llm():
-    """Build a RAGAS-compatible LangchainLLMWrapper from the current LLM provider."""
-    app_llm = get_llm()
-    return LangchainLLMWrapper(app_llm)
+    """Build a RAGAS-compatible NVIDIA LLM via llm_factory (OpenAI-compatible)."""
+    from openai import OpenAI
+
+    api_keys_env = os.getenv("NVIDIA_API_KEYS", "") or os.getenv("NVIDIA_API_KEY", "")
+    if "," in api_keys_env:
+        api_key = api_keys_env.split(",")[0].strip().strip('"').strip("'")
+    else:
+        api_key = api_keys_env.strip()
+
+    if not api_key:
+        raise ValueError("NVIDIA_API_KEY or NVIDIA_API_KEYS not set in .env")
+
+    model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
+
+    client = OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=api_key,
+    )
+
+    from ragas.llms import llm_factory
+    return llm_factory(
+        model=model,
+        provider="openai",
+        client=client,
+        temperature=float(os.getenv("LLM_TEMPERATURE", "0.0")),
+        max_tokens=int(os.getenv("NVIDIA_MAX_TOKENS", "4096")),
+    )
 
 
 def _build_ragas_embeddings():
-    """Build a RAGAS-compatible LangchainEmbeddingsWrapper using the first HF key."""
-    from langchain_huggingface import HuggingFaceEndpointEmbeddings
-
-    token = os.getenv("HUGGINGFACEHUB_API_TOKEN", "")
-    hf_keys = os.getenv("HF_API_KEYS", "")
-    if hf_keys:
-        token = hf_keys.split(",")[0].strip().strip('"').strip("'")
-
-    if not token:
-        raise ValueError(
-            "No HuggingFace API token found. Set HUGGINGFACEHUB_API_TOKEN or HF_API_KEYS in .env"
-        )
-
-    emb = HuggingFaceEndpointEmbeddings(
-        model="Qwen/Qwen3-Embedding-8B",
-        task="feature-extraction",
-        huggingfacehub_api_token=token,
-    )
-    return LangchainEmbeddingsWrapper(emb)
+    """Build RAGAS-compatible embeddings using the app's load-balanced embeddings."""
+    from backend.services.embeddings import get_embeddings
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+    return LangchainEmbeddingsWrapper(get_embeddings())
 
 
-def run_evaluation():
+def run_evaluation(resume: bool = False):
     """Main evaluation pipeline."""
     logger.info("=" * 60)
     logger.info("Mortgage RAG — RAGAS Evaluation")
+    if resume:
+        logger.info("RESUME MODE — skipping steps 1-3")
     logger.info("=" * 60)
 
     eval_start = time.time()
 
-    # Step 1: Ingest documents
-    ingested = ingest_documents()
-
-    # Step 2: Load golden datasets
+    # Steps 1-3 (can be skipped with --resume)
+    ingested = []
     questions = load_golden_datasets()
-
     if not questions:
         logger.warning("No golden datasets found — add JSON files to %s", GOLDEN_DIR)
         return
 
-    # Step 3: Build dataset by running RAG
-    dataset = build_dataset(questions)
+    if resume and CHECKPOINT_FILE.exists():
+        checkpoint = _load_checkpoint()
+        if checkpoint:
+            dataset = Dataset.from_dict(checkpoint)
+            logger.info("Resumed from checkpoint — %d questions loaded", len(dataset))
+        else:
+            logger.warning("Checkpoint file empty, running steps 1-3")
+            ingest_documents()
+            dataset = build_dataset(questions)
+    else:
+        # Step 1: Ingest documents
+        ingested = ingest_documents()
+        # Step 3: Build dataset by running RAG
+        dataset = build_dataset(questions)
 
     if len(dataset) == 0:
         logger.warning("No answerable questions to evaluate")
@@ -273,16 +317,14 @@ def run_evaluation():
 
     ragas_llm = _build_ragas_llm()
     ragas_embeddings = _build_ragas_embeddings()
-    logger.info("RAGAS wrappers ready — using app LLM + HF embeddings")
+    logger.info("RAGAS wrappers ready — using NVIDIA llm_factory + HF embeddings")
 
     ragas_start = time.time()
     results = evaluate(
         dataset=dataset,
-        metrics=[
-            Faithfulness(llm=ragas_llm),
-            AnswerRelevancy(llm=ragas_llm, embeddings=ragas_embeddings),
-            ContextPrecision(llm=ragas_llm),
-        ],
+        metrics=[faithfulness, answer_relevancy, context_precision],
+        llm=ragas_llm,
+        embeddings=ragas_embeddings,
     )
     ragas_elapsed = time.time() - ragas_start
 
@@ -342,7 +384,7 @@ def save_report(scores, targets, all_pass, questions, dataset, ingested):
         for doc in ingested:
             lines.append(f"- **{doc['filename']}** — {doc['num_chunks']} chunks (ID: `{doc['doc_id']}`)")
     else:
-        lines.append("- No documents were ingested")
+        lines.append("- No documents were ingested (previously ingested)")
 
     lines.extend([
         "",
@@ -384,9 +426,11 @@ def save_report(scores, targets, all_pass, questions, dataset, ingested):
         "*Generated by RAGAS evaluation script*",
     ])
 
-    with open(report_path, "w") as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
 
 if __name__ == "__main__":
-    run_evaluation()
+    import sys
+    resume = "--resume" in sys.argv
+    run_evaluation(resume=resume)
