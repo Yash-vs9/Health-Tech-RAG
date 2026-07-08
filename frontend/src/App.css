@@ -508,9 +508,15 @@ img { max-width: 100%; }
 
 .team-grid {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   gap: 24px;
   perspective: 1000px;
+}
+
+.team-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
 }
 
 .team-card {

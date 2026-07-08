@@ -137,7 +137,19 @@ export default function Home() {
           </motion.div>
 
           <div className="team-grid">
-            <TeamCard name="Anushka Barman" role="Frontend Developer" index={0} />
+            <div className="team-row">
+              <TeamCard name="Akansha" index={0} />
+              <TeamCard name="Ananya" index={1} />
+              <TeamCard name="Anushka" index={2} />
+              <TeamCard name="Aryan" index={3} />
+              <TeamCard name="Isha" index={4} />
+            </div>
+            <div className="team-row">
+              <TeamCard name="Lakshya" index={5} />
+              <TeamCard name="Soojal" index={6} />
+              <TeamCard name="Tejasva" index={7} />
+              <TeamCard name="Yash" index={8} />
+            </div>
           </div>
         </div>
       </section>

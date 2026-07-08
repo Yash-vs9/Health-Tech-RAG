@@ -26,7 +26,7 @@ export default function TeamCard({ name, role, index }) {
         {initials}
       </motion.div>
       <h3>{name}</h3>
-      <p>{role}</p>
+      {role && <p>{role}</p>}
     </motion.div>
   );
 }
