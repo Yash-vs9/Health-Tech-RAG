@@ -107,6 +107,8 @@ def get_embeddings():
     token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
     hf_keys_env = os.getenv("HF_API_KEYS", "")
 
+    print("HF Token:", token)
+
     if not token and not hf_keys_env:
         raise ValueError(
             "HUGGINGFACEHUB_API_TOKEN not set. Add your HF token to .env"

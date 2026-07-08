@@ -118,6 +118,13 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
     logger.debug("BM25 search — query=%s, hits=%d, top_score=%.4f", query[:50], len(results), results[0]["score"] if results else 0)
     return results
 
+def refresh_bm25():
+    """Force rebuild BM25 index after ingestion."""
+    global _bm25_index, _bm25_docs
+    _bm25_index = None
+    _bm25_docs = []
+    logger.info("BM25 index invalidated — will rebuild on next query")
+
 
 # ---------------------------------------------------------------------------
 # Reciprocal Rank Fusion (RRF)
