@@ -1,11 +1,3 @@
-"""
-Auth service.
-
-Wraps Supabase Auth for:
-- Email/password signup + login
-- Google OAuth (redirect-based flow)
-- JWT verification (used as a FastAPI dependency to protect routes)
-"""
 from __future__ import annotations
 
 import os
@@ -15,8 +7,6 @@ from backend.logging_config import get_logger
 
 logger = get_logger("backend.auth")
 
-
-# ── Signup / Login (email + password) ──────────────────────────────────────
 
 def signup_with_email(email: str, password: str, full_name: str | None = None) -> dict:
     client = get_anon_client()
@@ -35,8 +25,6 @@ def signup_with_email(email: str, password: str, full_name: str | None = None) -
 
     logger.info("User signed up — id=%s, email=%s", result.user.id, email)
 
-    # Supabase may require email confirmation depending on project settings.
-    # If session is None, the user must confirm their email before login.
     if result.session is None:
         return {
             "user_id": result.user.id,
@@ -105,18 +93,7 @@ def logout(access_token: str) -> None:
         logger.warning("Logout error (non-fatal) — error=%s", e)
 
 
-# ── Google OAuth ──────────────────────────────────────────────────────────
-
 def get_google_oauth_url(redirect_to: str) -> str:
-    """
-    Returns the URL the frontend should redirect the browser to.
-    Supabase handles the Google OAuth dance and redirects back to
-    `redirect_to` with tokens in the URL fragment.
-
-    Google OAuth provider must be enabled + configured in:
-    Supabase Dashboard → Authentication → Providers → Google
-    (Client ID + Secret from Google Cloud Console)
-    """
     client = get_anon_client()
     result = client.auth.sign_in_with_oauth({
         "provider": "google",
@@ -125,17 +102,7 @@ def get_google_oauth_url(redirect_to: str) -> str:
     return result.url
 
 
-# ── Token verification (FastAPI dependency) ────────────────────────────────
-
 async def get_current_user(authorization: str = Header(...)) -> dict:
-    """
-    FastAPI dependency. Extracts and verifies the JWT from the
-    Authorization: Bearer <token> header. Use on any protected route:
-
-        @app.get("/me")
-        async def me(user: dict = Depends(get_current_user)):
-            return user
-    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
 

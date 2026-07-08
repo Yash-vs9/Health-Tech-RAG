@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from backend.models.schemas import SendMessageRequest, MessageResponse, ChatHistoryResponse
-from backend.services import auth_service, message_service, session_service, document_service
+from backend.services import auth_service, message_service, session_service, document_service, query_engine
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.routes.messages")
@@ -26,25 +26,18 @@ async def send_message(
     # 1. Store the user's question
     message_service.add_message(chat_session_id, role="user", content=req.question)
 
-    # ── INTEGRATION POINT ────────────────────────────────────────────────
-    # Call the main repo's RAG pipeline, scoped to this chat's documents:
-    #
-    #   from backend.services import document_service as ds, query_engine
-    #   docs = ds.list_documents(user["id"], chat_session_id)
-    #   doc_ids = [d["doc_id"] for d in docs if d["status"] == "ready"]
-    #   result = query_engine.query_rag(
-    #       question=req.question,
-    #       doc_ids=doc_ids,
-    #       conversation_context=conversation_context,
-    #   )
-    #   answer, sources = result["answer"], result["sources"]
-    #
-    # Stubbed below until wired in:
-    answer = "RAG pipeline not yet connected — see INTEGRATION POINT comment."
-    sources = []
-    # ─────────────────────────────────────────────────────────────────────
+    # 2. Run RAG scoped to this chat's documents
+    docs = document_service.list_documents(user["id"], chat_session_id)
+    doc_ids = [d["doc_id"] for d in docs if d["status"] == "ready"]
 
-    # 2. Store the assistant's answer
+    result = query_engine.query_rag(
+        question=req.question,
+        doc_ids=doc_ids if doc_ids else None,
+        conversation_context=conversation_context,
+    )
+    answer, sources = result["answer"], result["sources"]
+
+    # 3. Store the assistant's answer
     assistant_msg = message_service.add_message(
         chat_session_id, role="assistant", content=answer, sources=sources,
     )

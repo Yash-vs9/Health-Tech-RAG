@@ -1,10 +1,3 @@
-"""
-Message service.
-
-Stores each Q&A turn in a chat session. The actual RAG call
-(retrieval + LLM) happens in the main repo's query_engine.py —
-this service just persists the conversation.
-"""
 from __future__ import annotations
 
 from backend.db.supabase_client import get_admin_client
@@ -33,10 +26,6 @@ def add_message(
 
 
 def get_chat_history(user_id: str, chat_session_id: str) -> list[dict]:
-    """
-    Returns messages only if the chat session belongs to user_id —
-    enforced here explicitly since we use the admin client (bypasses RLS).
-    """
     client = get_admin_client()
 
     session_check = client.table("chat_sessions") \
@@ -59,11 +48,6 @@ def get_chat_history(user_id: str, chat_session_id: str) -> list[dict]:
 
 
 def build_conversation_context(messages: list[dict], max_turns: int = 5) -> str:
-    """
-    Optional helper: formats recent chat history into a string that can be
-    prepended to the RAG prompt for follow-up question support
-    (e.g. "what about the second one?" referring to a prior answer).
-    """
     recent = messages[-(max_turns * 2):]
     lines = []
     for m in recent:

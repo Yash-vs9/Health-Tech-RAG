@@ -10,7 +10,7 @@ from backend.services import auth_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/signup", response_model=AuthResponse)
+@router.post("/signup")
 async def signup(req: SignupRequest):
     result = auth_service.signup_with_email(req.email, req.password, req.full_name)
     return result
@@ -30,11 +30,6 @@ async def refresh(req: RefreshTokenRequest):
 
 @router.get("/google/url", response_model=GoogleOAuthURLResponse)
 async def google_oauth_url(redirect_to: str = Query(..., description="Frontend URL to redirect back to after Google login")):
-    """
-    Frontend calls this, then does: window.location.href = response.auth_url
-    Supabase handles the Google consent screen and redirects back to
-    `redirect_to` with access_token/refresh_token in the URL fragment.
-    """
     url = auth_service.get_google_oauth_url(redirect_to)
     return {"auth_url": url}
 

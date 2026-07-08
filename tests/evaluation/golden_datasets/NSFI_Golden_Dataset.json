@@ -1,0 +1,232 @@
+{
+  "metadata": {
+    "dataset_name": "NSFI 2025-30 — RAG Golden Evaluation Dataset",
+    "version": "1.0",
+    "source_document": "National Strategy for Financial Inclusion 2025-30 (RBI)",
+    "domain": "Financial Inclusion Policy",
+    "created_for": "RAG chatbot evaluation",
+    "total_pairs": 20,
+    "question_type_distribution": {
+      "factoid": 6,
+      "descriptive": 4,
+      "list": 1,
+      "reasoning": 9
+    },
+    "difficulty_distribution": {
+      "Easy": 12,
+      "Medium": 8
+    },
+    "schema": {
+      "id": "Unique integer ID",
+      "category": "Topic category of the question",
+      "question": "User query to send to the RAG chatbot",
+      "ground_truth_answer": "Expected correct answer for evaluation",
+      "question_type": "factoid | descriptive | reasoning | list",
+      "difficulty": "Easy | Medium | Hard",
+      "source_chapter": "Source chapter/section in the NSFI document",
+      "expected_intent": "Intent behind the question (Definition | Explanation | information retrieval)"
+    }
+  },
+  "golden_dataset": [
+    {
+      "id": 1,
+      "category": "Introduction",
+      "question": "what does NSFI stand for?",
+      "ground_truth_answer": "NSFI stands for national strategy for financial inclusion",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Introduction",
+      "expected_intent": "Definition"
+    },
+    {
+      "id": 2,
+      "category": "Timeline",
+      "question": "which period does NSFI 2025-30 cover",
+      "ground_truth_answer": "it covers the period from 2025-30",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Introduction",
+      "expected_intent": "information retrieval"
+    },
+    {
+      "id": 3,
+      "category": "Organisation",
+      "question": "who released NSFI 2025-30",
+      "ground_truth_answer": "Reserve Bank of India released NSFI 2025-30",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Introduction",
+      "expected_intent": "Information retrieval"
+    },
+    {
+      "id": 4,
+      "category": "Vision",
+      "question": "what is the vision of NSFI 2025-30",
+      "ground_truth_answer": "to strengthen and deepen the financial inclusion ecosystem in India",
+      "question_type": "descriptive",
+      "difficulty": "Easy",
+      "source_chapter": "Vision statement",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 5,
+      "category": "Objectives",
+      "question": "what is the primary objective of financial inclusion",
+      "ground_truth_answer": "to provide affordable and accessible financial services to all sections of society",
+      "question_type": "descriptive",
+      "difficulty": "Easy",
+      "source_chapter": "Objectives",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 6,
+      "category": "Strategic Objectives",
+      "question": "what are the five strategic objectives of NSFI 2025-30",
+      "ground_truth_answer": "access, usage, quality, and consumer protection",
+      "question_type": "list",
+      "difficulty": "Medium",
+      "source_chapter": "Strategic goals",
+      "expected_intent": "Information retrieval"
+    },
+    {
+      "id": 7,
+      "category": "Financial Literacy",
+      "question": "what is financial literacy",
+      "ground_truth_answer": "financial literacy is the ability to understand and effectively use financial skills and services",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Financial literacy",
+      "expected_intent": "Definition"
+    },
+    {
+      "id": 8,
+      "category": "Consumer Protection",
+      "question": "why is consumer protection important in financial services",
+      "ground_truth_answer": "it protects consumers from unfair practices and promotes trust in the financial system",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Consumer protection",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 9,
+      "category": "Digital Inclusion",
+      "question": "what is digital financial inclusion",
+      "ground_truth_answer": "digital financial inclusion refers to providing financial services through digital channels",
+      "question_type": "descriptive",
+      "difficulty": "Easy",
+      "source_chapter": "Digital ecosystem",
+      "expected_intent": "Definition"
+    },
+    {
+      "id": 10,
+      "category": "Economic Growth",
+      "question": "how does financial inclusion support economic growth",
+      "ground_truth_answer": "it promotes inclusive and sustainable economic development",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Impact of financial inclusion",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 11,
+      "category": "Access",
+      "question": "why is access to financial services important",
+      "ground_truth_answer": "access to financial services enables individuals to participate in the formal financial system",
+      "question_type": "reasoning",
+      "difficulty": "Easy",
+      "source_chapter": "Access",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 12,
+      "category": "Usage",
+      "question": "why is usage of financial services important",
+      "ground_truth_answer": "usage ensures that financial access translates into meaningful benefits",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Usage",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 13,
+      "category": "Quality",
+      "question": "why is quality important in financial services",
+      "ground_truth_answer": "quality improves customer satisfaction and trust",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Quality",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 14,
+      "category": "Financial Literacy",
+      "question": "why is financial literacy important",
+      "ground_truth_answer": "it helps individuals make informed financial decisions",
+      "question_type": "reasoning",
+      "difficulty": "Easy",
+      "source_chapter": "Financial literacy",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 15,
+      "category": "Inclusion",
+      "question": "which sections of society are targeted by financial inclusion efforts",
+      "ground_truth_answer": "rural and underserved populations are major focus areas",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Inclusion",
+      "expected_intent": "information retrieval"
+    },
+    {
+      "id": 16,
+      "category": "Awareness",
+      "question": "why is financial awareness important",
+      "ground_truth_answer": "financial awareness promotes responsible use of financial services",
+      "question_type": "reasoning",
+      "difficulty": "Easy",
+      "source_chapter": "Financial literacy",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 17,
+      "category": "Growth",
+      "question": "why are affordable financial services necessary",
+      "ground_truth_answer": "they ensure wider participation in the financial system",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Access",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 18,
+      "category": "Governance",
+      "question": "which institution coordinates financial inclusion efforts in India",
+      "ground_truth_answer": "the Reserve Bank of India coordinates financial inclusion efforts",
+      "question_type": "factoid",
+      "difficulty": "Easy",
+      "source_chapter": "Governance",
+      "expected_intent": "information retrieval"
+    },
+    {
+      "id": 19,
+      "category": "Economic Development",
+      "question": "what is the significance of financial inclusion for economic growth",
+      "ground_truth_answer": "financial inclusion promotes inclusive and sustainable economic growth",
+      "question_type": "descriptive",
+      "difficulty": "Medium",
+      "source_chapter": "Impact of financial inclusion",
+      "expected_intent": "Explanation"
+    },
+    {
+      "id": 20,
+      "category": "Consumer Trust",
+      "question": "why is consumer trust important in financial services",
+      "ground_truth_answer": "consumer trust encourages greater participation in the financial system",
+      "question_type": "reasoning",
+      "difficulty": "Medium",
+      "source_chapter": "Consumer protection",
+      "expected_intent": "Explanation"
+    }
+  ]
+}

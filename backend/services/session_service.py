@@ -1,12 +1,3 @@
-"""
-Chat session service.
-
-A chat session belongs to one user and can hold multiple documents.
-All queries go through the admin client (service_role) since the backend
-has already authenticated the user via the JWT — we pass user_id explicitly
-and trust it, rather than relying on RLS here (RLS is the second line of
-defense if someone calls Supabase directly).
-"""
 from __future__ import annotations
 
 from backend.db.supabase_client import get_admin_client
@@ -40,7 +31,6 @@ def list_chat_sessions(user_id: str) -> list[dict]:
     if not sessions:
         return []
 
-    # Get document counts per session in one query
     session_ids = [s["id"] for s in sessions]
     docs_result = client.table("documents") \
         .select("chat_session_id") \
@@ -86,12 +76,6 @@ def rename_chat_session(user_id: str, chat_session_id: str, title: str) -> dict:
 
 
 def delete_chat_session(user_id: str, chat_session_id: str) -> None:
-    """
-    Deletes the chat session row. Cascades to documents and messages
-    via ON DELETE CASCADE in the schema. Does NOT delete files from
-    Storage or vectors from ChromaDB — call document_service.delete_document
-    for each document first if you need that cleanup.
-    """
     client = get_admin_client()
     result = client.table("chat_sessions") \
         .delete() \
