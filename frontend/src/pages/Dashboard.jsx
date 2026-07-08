@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import ChatList from "../components/ChatList";
 import ChatView from "../components/ChatView";
+import PdfViewer from "../components/PdfViewer";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pdfViewer, setPdfViewer] = useState(null);
   const pollingRef = useRef(null);
 
   useEffect(() => {
@@ -181,6 +183,16 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  const handleSourceClick = useCallback((docId, filename, pageNumber) => {
+    if (!activeChat || !docId) return;
+    const url = api.getDocPdfUrl(token, activeChat.id, docId);
+    setPdfViewer({ url, filename, pageNumber: pageNumber || 1, token });
+  }, [activeChat, token]);
+
+  const handleClosePdf = useCallback(() => {
+    setPdfViewer(null);
+  }, []);
+
   if (!token) return null;
 
   return (
@@ -238,7 +250,19 @@ export default function Dashboard() {
           onDeleteDoc={handleDeleteDoc}
           onRename={handleRenameChat}
           loading={loading}
+          onSourceClick={handleSourceClick}
         />
+        <AnimatePresence>
+          {pdfViewer && (
+            <PdfViewer
+              pdfUrl={pdfViewer.url}
+              pageNumber={pdfViewer.pageNumber}
+              filename={pdfViewer.filename}
+              token={pdfViewer.token}
+              onClose={handleClosePdf}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

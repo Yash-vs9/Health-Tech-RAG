@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from backend.models.schemas import DocumentResponse
 from backend.services import auth_service, document_service, session_service, ingestion
 from backend.services import vectorstore
@@ -65,6 +66,29 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Storage upload failed: {e}")
 
     return row
+
+
+@router.get("/{document_id}/pdf")
+async def get_document_pdf(
+    chat_session_id: str,
+    document_id: str,
+    user: dict = Depends(auth_service.get_current_user),
+):
+    doc = document_service.get_document(user["id"], chat_session_id, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
+    for f in os.listdir(upload_dir):
+        if f.startswith(doc["doc_id"]):
+            pdf_path = os.path.join(upload_dir, f)
+            return FileResponse(
+                path=pdf_path,
+                media_type="application/pdf",
+                filename=doc["filename"],
+            )
+
+    raise HTTPException(status_code=404, detail="PDF file not found on disk")
 
 
 @router.get("", response_model=list[DocumentResponse])

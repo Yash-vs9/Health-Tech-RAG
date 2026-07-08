@@ -55,6 +55,8 @@ export const api = {
     request('GET', `/chats/${chatId}/documents`, null, token),
   deleteDoc: (token, chatId, docId) =>
     request('DELETE', `/chats/${chatId}/documents/${docId}`, null, token),
+  getDocPdfUrl: (token, chatId, docId) =>
+    `${API_BASE}/chats/${chatId}/documents/${docId}/pdf`,
 
   // Messages
   sendMessage: (token, chatId, question) =>

@@ -84,6 +84,20 @@ def list_documents(user_id: str, chat_session_id: str) -> list[dict]:
     return result.data
 
 
+def get_document(user_id: str, chat_session_id: str, document_id: str) -> dict | None:
+    """Return a single document row, or None if not found / not owned."""
+    client = get_admin_client()
+    result = client.table("documents") \
+        .select("*") \
+        .eq("id", document_id) \
+        .eq("chat_session_id", chat_session_id) \
+        .eq("user_id", user_id) \
+        .neq("status", "deleted") \
+        .maybe_single() \
+        .execute()
+    return result.data if result and result.data else None
+
+
 def delete_document(user_id: str, document_id: str) -> dict:
     client = get_admin_client()
 

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './FileUpload';
-import { Send, ChevronDown, ChevronRight, Bot, User, Sparkles } from 'lucide-react';
+import { Send, ChevronDown, ChevronRight, Bot, User, Sparkles, ExternalLink } from 'lucide-react';
 
-export default function ChatView({ chat, messages, docs, onSend, onUpload, onDeleteDoc, onRename, loading }) {
+export default function ChatView({ chat, messages, docs, onSend, onUpload, onDeleteDoc, onRename, loading, onSourceClick }) {
   const [input, setInput] = useState('');
   const [docsExpanded, setDocsExpanded] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -172,9 +172,26 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
                   <details>
                     <summary>Sources ({msg.sources.length})</summary>
                     {msg.sources.map((s, j) => (
-                      <div key={j} className="source-item">
-                        <strong>{s.metadata?.filename || s.metadata?.doc_id || 'Doc'}</strong>
-                        {s.metadata?.page !== undefined && ` — page ${s.metadata.page}`}
+                      <div
+                        key={j}
+                        className="source-item clickable"
+                        onClick={() => onSourceClick && onSourceClick(
+                          s.metadata?.doc_id,
+                          s.metadata?.filename,
+                          s.metadata?.page_number || s.metadata?.page
+                        )}
+                        title="Click to view in PDF"
+                      >
+                        <div className="source-item-header">
+                          <strong>{s.metadata?.filename || s.metadata?.doc_id || 'Doc'}</strong>
+                          {s.metadata?.page_number !== undefined && (
+                            <span className="source-page">Page {s.metadata.page_number}</span>
+                          )}
+                          {s.metadata?.section && (
+                            <span className="source-section">{s.metadata.section}</span>
+                          )}
+                          <ExternalLink size={12} className="source-link-icon" />
+                        </div>
                         <p>{s.content?.substring(0, 150)}...</p>
                       </div>
                     ))}
