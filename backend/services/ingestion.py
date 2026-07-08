@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from backend.logging_config import get_logger
 from .embeddings import get_embeddings
 from . import vectorstore
+from .ocr_fallback import apply_ocr_fallback
 
 logger = get_logger("backend.ingestion")
 
@@ -150,6 +151,10 @@ def _load_pdf(file_path: str) -> list[Document]:
     """
     Load PDF pages as Documents, with tables extracted and formatted as
     markdown table chunks (marked with is_table=True metadata).
+
+    Pages with little/no extractable text (scanned/faxed pages, common in
+    older mortgage documents) are OCR'd via Tesseract as a fallback so
+    they don't silently disappear from retrieval.
     """
     from langchain_community.document_loaders import PyMuPDFLoader
     import fitz
@@ -162,6 +167,9 @@ def _load_pdf(file_path: str) -> list[Document]:
     # Load text pages
     loader = PyMuPDFLoader(file_path)
     docs = loader.load()
+
+    # OCR fallback for scanned/sparse-text pages
+    docs = apply_ocr_fallback(docs, file_path)
 
     # Remove table text from page content to avoid duplication,
     # and attach table metadata
