@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import ChatList from "../components/ChatList";
 import ChatView from "../components/ChatView";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
   const { token, user, logout } = useAuth();
@@ -26,7 +27,6 @@ export default function Dashboard() {
     loadChats();
   }, [token]);
 
-  // Poll for document status updates every 5s while any doc is "processing"
   useEffect(() => {
     if (!activeChat) return;
 
@@ -37,14 +37,12 @@ export default function Dashboard() {
         try {
           const freshDocs = await api.listDocs(token, activeChat.id);
           setDocs((prev) => {
-            // Merge: keep in-progress uploads that aren't in freshDocs yet
             const freshMap = new Map(freshDocs.map(d => [d.id, d]));
             const merged = prev.map(d => {
               const updated = freshMap.get(d.id);
               if (updated) { freshMap.delete(d.id); return updated; }
               return d;
             });
-            // Add any docs from server we didn't have
             for (const d of freshMap.values()) merged.push(d);
             return merged;
           });
@@ -187,20 +185,36 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <div className={`chat-list-panel ${sidebarOpen ? 'open' : 'closed'}`}>
-        <ChatList
-          chats={chats}
-          activeChat={activeChat}
-          onSelect={handleSelectChat}
-          onNew={handleNewChat}
-          onDelete={handleDeleteChat}
-          onRename={handleRenameChat}
-          user={user}
-          onLogout={handleLogout}
-        />
-      </div>
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.div
+            className="chat-list-panel open"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 300, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <ChatList
+              chats={chats}
+              activeChat={activeChat}
+              onSelect={handleSelectChat}
+              onNew={handleNewChat}
+              onDelete={handleDeleteChat}
+              onRename={handleRenameChat}
+              user={user}
+              onLogout={handleLogout}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="main-area">
-        <div className="sidebar-edge-toggle" onClick={() => setSidebarOpen((v) => !v)} title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}>
+        <motion.div
+          className="sidebar-edge-toggle"
+          onClick={() => setSidebarOpen((v) => !v)}
+          title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             {sidebarOpen ? (
               <>
@@ -214,7 +228,7 @@ export default function Dashboard() {
               </>
             )}
           </svg>
-        </div>
+        </motion.div>
         <ChatView
           chat={activeChat}
           messages={messages}

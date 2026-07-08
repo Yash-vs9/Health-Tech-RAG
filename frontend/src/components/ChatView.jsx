@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './FileUpload';
+import { Send, ChevronDown, ChevronRight, Bot, User, Sparkles } from 'lucide-react';
 
 export default function ChatView({ chat, messages, docs, onSend, onUpload, onDeleteDoc, onRename, loading }) {
   const [input, setInput] = useState('');
@@ -23,9 +25,28 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
   if (!chat) {
     return (
       <div className="chat-view empty-state">
-        <div className="empty-icon">🏠</div>
-        <h2>Mortgage RAG Assistant</h2>
-        <p>Select a chat or create a new one to get started.</p>
+        <motion.div
+          className="empty-icon"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, type: "spring" }}
+        >
+          <Sparkles size={36} color="var(--accent)" />
+        </motion.div>
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          Mortgage RAG Assistant
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          Select a chat or create a new one to get started.
+        </motion.p>
       </div>
     );
   }
@@ -80,7 +101,6 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
         </div>
       </div>
 
-      {/* Documents panel — collapsible */}
       <div className={`docs-panel ${docsExpanded ? 'expanded' : 'collapsed'}`}>
         <div className="docs-panel-header">
           <button
@@ -88,12 +108,18 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
             onClick={() => setDocsExpanded((v) => !v)}
             title={docsExpanded ? 'Collapse' : 'Expand'}
           >
-            <span className="docs-toggle-arrow">{docsExpanded ? '▾' : '▸'}</span>
+            <span className="docs-toggle-arrow">
+              {docsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
             <span className="docs-toggle-label">Documents ({docs.length})</span>
           </button>
         </div>
         {docsExpanded && (
-          <>
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.2 }}
+          >
             <FileUpload onUpload={onUpload} />
             {docs.length > 0 && (
               <div className="doc-list">
@@ -107,47 +133,78 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
                 ))}
               </div>
             )}
-          </>
+          </motion.div>
         )}
       </div>
 
-      {/* Messages */}
       <div className="messages">
         {messages.length === 0 && (
-          <div className="no-messages">
+          <motion.div
+            className="no-messages"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Bot size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
             <p>Ask a question about your documents.</p>
-          </div>
+          </motion.div>
         )}
-        {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
-            <div className="message-role">{msg.role === 'user' ? 'You' : 'Assistant'}</div>
-            <div className="message-text">{msg.content}</div>
-            {msg.sources && msg.sources.length > 0 && (
-              <div className="message-sources">
-                <details>
-                  <summary>Sources ({msg.sources.length})</summary>
-                  {msg.sources.map((s, j) => (
-                    <div key={j} className="source-item">
-                      <strong>{s.metadata?.filename || s.metadata?.doc_id || 'Doc'}</strong>
-                      {s.metadata?.page !== undefined && ` — page ${s.metadata.page}`}
-                      <p>{s.content?.substring(0, 150)}...</p>
-                    </div>
-                  ))}
-                </details>
+        <AnimatePresence>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              className={`message ${msg.role}`}
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              layout
+            >
+              <div className="message-role">
+                {msg.role === 'user' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><User size={12} /> You</span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Bot size={12} /> Assistant</span>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+              <div className="message-text">{msg.content}</div>
+              {msg.sources && msg.sources.length > 0 && (
+                <div className="message-sources">
+                  <details>
+                    <summary>Sources ({msg.sources.length})</summary>
+                    {msg.sources.map((s, j) => (
+                      <div key={j} className="source-item">
+                        <strong>{s.metadata?.filename || s.metadata?.doc_id || 'Doc'}</strong>
+                        {s.metadata?.page !== undefined && ` — page ${s.metadata.page}`}
+                        <p>{s.content?.substring(0, 150)}...</p>
+                      </div>
+                    ))}
+                  </details>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {loading && (
-          <div className="message assistant loading">
-            <div className="message-role">Assistant</div>
-            <div className="message-text">Thinking...</div>
-          </div>
+          <motion.div
+            className="message assistant loading"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="message-role">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Bot size={12} /> Assistant</span>
+            </div>
+            <div className="message-text">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </motion.div>
         )}
         <div ref={messagesEnd} />
       </div>
 
-      {/* Input */}
       <form className="chat-input" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -156,9 +213,15 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
           placeholder="Ask about your mortgage documents..."
           disabled={loading}
         />
-        <button type="submit" disabled={loading || !input.trim()}>
-          Send
-        </button>
+        <motion.button
+          type="submit"
+          disabled={loading || !input.trim()}
+          whileHover={{ scale: loading ? 1 : 1.03 }}
+          whileTap={{ scale: loading ? 1 : 0.97 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Send size={18} />
+        </motion.button>
       </form>
     </div>
   );
