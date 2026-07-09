@@ -67,7 +67,7 @@ Question: {question}
 Answer:"""
 
 
-def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
+async def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
     # ── Input guardrails ────────────────────────────────────────────────
     input_guard = get_input_guardrails()
     guard_result = input_guard.check(question)
@@ -202,7 +202,7 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
 
     # ── NeMo Guardrails (domain + safety check) ──────────────────────
     nemo = get_nemo_guardrails()
-    nemo_response = nemo.check_and_generate(
+    nemo_response = await nemo.check_and_generate(
         user_input=question,
         context=f"LLM generated this answer from documents:\n{answer}",
     )

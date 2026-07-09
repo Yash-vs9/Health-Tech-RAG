@@ -107,7 +107,7 @@ async def query(request: QueryRequest):
     logger.info("Query request — q=%s, doc_ids=%s", request.question[:80], request.doc_ids)
     start = time.time()
     try:
-        result = query_engine.query_rag(
+        result = await query_engine.query_rag(
             question=request.question,
             doc_ids=request.doc_ids if request.doc_ids else None,
         )

@@ -282,7 +282,7 @@ class NemoGuardrails:
                 logger.warning("NeMo Guardrails init failed — falling back to regex: %s", e)
                 self._rails = None
 
-    def check_and_generate(self, user_input: str, context: str = "") -> str | None:
+    async def check_and_generate(self, user_input: str, context: str = "") -> str | None:
         """
         Pass user input through NeMo rails. Returns guarded response or None if unavailable.
         """
@@ -296,7 +296,7 @@ class NemoGuardrails:
             messages.append({"role": "user", "content": user_input})
 
             start = time.time()
-            response = self._rails.generate(messages=messages)
+            response = await self._rails.generate_async(messages=messages)
             elapsed = time.time() - start
             logger.info("NeMo Guardrails response — elapsed=%.2fs", elapsed)
 

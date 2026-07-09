@@ -30,7 +30,7 @@ async def send_message(
     docs = document_service.list_documents(user["id"], chat_session_id)
     doc_ids = [d["doc_id"] for d in docs if d["status"] == "ready"]
 
-    result = query_engine.query_rag(
+    result = await query_engine.query_rag(
         question=req.question,
         doc_ids=doc_ids if doc_ids else None,
         conversation_context=conversation_context,
