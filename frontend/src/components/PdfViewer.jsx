@@ -7,6 +7,14 @@ import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader } from 'lucide-re
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+
+function isImageFile(filename) {
+  if (!filename) return false;
+  const lower = filename.toLowerCase();
+  return IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
 export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, token, onClose }) {
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialPage || 1);
@@ -14,6 +22,8 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const containerRef = useRef(null);
+
+  const isImage = isImageFile(filename);
 
   useEffect(() => {
     if (initialPage) {
@@ -34,6 +44,16 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
     setError('Failed to load PDF. Please try again.');
     setLoading(false);
     console.error('PDF load error:', err);
+  }, []);
+
+  const onImageLoad = useCallback(() => {
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  const onImageError = useCallback(() => {
+    setError('Failed to load image. Please try again.');
+    setLoading(false);
   }, []);
 
   const goToPrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
@@ -63,7 +83,8 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
       <div className="pdf-panel-header">
         <div className="pdf-panel-title">
           <span className="pdf-filename">{filename || 'Document'}</span>
-          {numPages && <span className="pdf-page-info">Page {currentPage} of {numPages}</span>}
+          {!isImage && numPages && <span className="pdf-page-info">Page {currentPage} of {numPages}</span>}
+          {isImage && <span className="pdf-page-info">Image</span>}
         </div>
         <div className="pdf-panel-actions">
           <button className="pdf-action-btn" onClick={zoomOut} title="Zoom out" disabled={loading || !!error}>
@@ -73,41 +94,43 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
           <button className="pdf-action-btn" onClick={zoomIn} title="Zoom in" disabled={loading || !!error}>
             <ZoomIn size={16} />
           </button>
-          <button className="pdf-close-btn" onClick={onClose} title="Close PDF viewer">
+          <button className="pdf-close-btn" onClick={onClose} title="Close viewer">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      <div className="pdf-controls">
-        <button
-          className="pdf-nav-btn"
-          onClick={goToPrevPage}
-          disabled={currentPage <= 1 || loading || !!error}
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <input
-          type="text"
-          className="pdf-page-input"
-          placeholder={numPages ? `1-${numPages}` : '...'}
-          onKeyDown={handlePageInput}
-          disabled={loading || !!error}
-        />
-        <button
-          className="pdf-nav-btn"
-          onClick={goToNextPage}
-          disabled={currentPage >= (numPages || 1) || loading || !!error}
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
+      {!isImage && (
+        <div className="pdf-controls">
+          <button
+            className="pdf-nav-btn"
+            onClick={goToPrevPage}
+            disabled={currentPage <= 1 || loading || !!error}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <input
+            type="text"
+            className="pdf-page-input"
+            placeholder={numPages ? `1-${numPages}` : '...'}
+            onKeyDown={handlePageInput}
+            disabled={loading || !!error}
+          />
+          <button
+            className="pdf-nav-btn"
+            onClick={goToNextPage}
+            disabled={currentPage >= (numPages || 1) || loading || !!error}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="pdf-viewer-content" ref={containerRef}>
         {loading && (
           <div className="pdf-loading">
             <Loader size={32} className="spin" />
-            <span>Loading PDF...</span>
+            <span>Loading {isImage ? 'image' : 'PDF'}...</span>
           </div>
         )}
         {error && (
@@ -115,19 +138,31 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
             <span>{error}</span>
           </div>
         )}
-        <Document
-          file={{ url: pdfUrl, httpHeaders: { Authorization: `Bearer ${token}` } }}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading=""
-        >
-          <Page
-            pageNumber={currentPage}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
+
+        {isImage ? (
+          <img
+            src={pdfUrl}
+            alt={filename}
+            style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            onLoad={onImageLoad}
+            onError={onImageError}
+            crossOrigin="anonymous"
           />
-        </Document>
+        ) : (
+          <Document
+            file={{ url: pdfUrl, httpHeaders: { Authorization: `Bearer ${token}` } }}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading=""
+          >
+            <Page
+              pageNumber={currentPage}
+              scale={scale}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+            />
+          </Document>
+        )}
       </div>
     </motion.div>
   );

@@ -109,12 +109,26 @@ async def get_document_pdf(chat_session_id: str, document_id: str, user: dict = 
 
     storage_path = row.get("storage_path")
     if not storage_path:
-        raise HTTPException(status_code=404, detail="PDF not available in storage")
+        raise HTTPException(status_code=404, detail="Document not available in storage")
+
+    # Detect media type from filename
+    filename = row.get("filename", "")
+    ext = os.path.splitext(filename)[1].lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
 
     try:
         client = get_admin_client()
         file_bytes = client.storage.from_(document_service.BUCKET).download(storage_path)
-        return Response(content=file_bytes, media_type="application/pdf")
+        return Response(content=file_bytes, media_type=media_type)
     except Exception as e:
-        logger.error("PDF download failed — doc_id=%s, error=%s", row["doc_id"], e)
-        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {e}")
+        logger.error("Document download failed — doc_id=%s, error=%s", row["doc_id"], e)
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {e}")
