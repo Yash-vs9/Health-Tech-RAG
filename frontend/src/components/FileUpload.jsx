@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, Image } from 'lucide-react';
 
 export default function FileUpload({ onUpload }) {
   const inputRef = useRef(null);
@@ -53,8 +53,8 @@ export default function FileUpload({ onUpload }) {
     setDragOver(false);
     const file = e.dataTransfer?.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith('.pdf') && !file.name.endsWith('.docx')) {
-      alert('Only PDF and DOCX files are supported.');
+    if (!file.name.endsWith('.pdf') && !file.name.endsWith('.docx') && !file.name.endsWith('.jpg') && !file.name.endsWith('.jpeg') && !file.name.endsWith('.png')) {
+      alert('Only PDF, DOCX, JPG, JPEG, and PNG files are supported.');
       return;
     }
     handleFile(file);
@@ -74,7 +74,7 @@ export default function FileUpload({ onUpload }) {
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.docx"
+        accept=".pdf,.docx,.jpg,.jpeg,.png"
         onChange={onInputChange}
         style={{ display: 'none' }}
       />
@@ -96,7 +96,7 @@ export default function FileUpload({ onUpload }) {
           <p className="upload-label">
             <strong>Click to upload</strong> or drag and drop
           </p>
-          <p className="upload-hint">PDF or DOCX (max 25MB)</p>
+          <p className="upload-hint">PDF, DOCX, JPG, JPEG, or PNG (max 25MB)</p>
         </div>
       )}
     </motion.div>
