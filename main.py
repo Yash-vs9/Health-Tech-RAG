@@ -2,6 +2,7 @@
 
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 print(os.getenv("MODEL_PROVIDER"))
@@ -14,6 +15,7 @@ chunks = get_chunks()
 
 # Step 2: Create collection
 client, collection = create_collection()
+
 try:
     existing = collection.get()
 
@@ -22,16 +24,14 @@ try:
 except:
     pass
 
-# Step 3: Store data
+# Step 3: Store documents
 collection.add(
     documents=[chunk.page_content for chunk in chunks],
     metadatas=[chunk.metadata for chunk in chunks],
     ids=[f"chunk_{i}" for i in range(len(chunks))]
 )
 
-
-
-# Step 6: Log stored data
+# Step 4: Display stored data
 stored = collection.get()
 
 print("\n--- STORED DATA ---")
@@ -42,40 +42,24 @@ for i in range(len(stored["ids"])):
     print(f"Text: {stored['documents'][i]}")
     print("----------------------")
 
-
-
-# Step 4: Query
+# Step 5: Search Mortgage Knowledge Base
 results = collection.query(
-    query_texts=["symptoms of diabetes"],
+    query_texts=["What is EMI?"],
     n_results=5
 )
 
-
-
-
-# Step 5: Display results
-
 print("\n--- SEARCH RESULTS ---")
 
-for i in range(len(results['ids'][0])):
+for i in range(len(results["ids"][0])):
     print(f"\nID: {results['ids'][0][i]}")
     print(f"Text: {results['documents'][0][i]}")
     print(f"Metadata: {results['metadatas'][0][i]}")
 
-
-# Step 7: LLM + Guardrails (NVIDIA)
-
-print("\n--- ASK QUESTION TO LLM ---")
-
-
-
-
+# Step 6: Ask User
 
 print("\n--- ASK QUESTION TO LLM ---")
 
-print("\n--- ASK QUESTION TO LLM ---")
-
-user_input = input("Enter your medical question: ")
+user_input = input("Enter your mortgage question: ")
 
 llm_choice = os.getenv("MODEL_PROVIDER")
 
@@ -86,5 +70,6 @@ if llm_choice == "nvidia":
 
     print("\n--- LLM RESPONSE ---")
     print(response["content"])
+
 else:
     print(f"Unsupported LLM Provider: {llm_choice}")
