@@ -61,15 +61,6 @@ async def delete_chat(chat_session_id: str, user: dict = Depends(auth_service.ge
             except Exception as e:
                 logger.warning("Storage cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
 
-            # Delete local PDF file
-            local_path = os.path.join("data", "uploaded_pdfs", f"{doc['doc_id']}_{doc['filename']}")
-            try:
-                if os.path.exists(local_path):
-                    os.remove(local_path)
-                    logger.info("Deleted local PDF — path=%s", local_path)
-            except Exception as e:
-                logger.warning("Local file cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
-
             # Mark document as deleted in DB
             try:
                 document_service.delete_document(user["id"], doc["id"])

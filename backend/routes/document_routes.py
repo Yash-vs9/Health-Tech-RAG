@@ -85,14 +85,4 @@ async def delete_document(chat_session_id: str, document_id: str, user: dict = D
     except Exception as e:
         logger.warning("ChromaDB cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
 
-    # Remove local PDF from uploaded_pdfs/
-    try:
-        upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
-        for f in os.listdir(upload_dir):
-            if f.startswith(row["doc_id"]):
-                os.remove(os.path.join(upload_dir, f))
-                logger.info("Local file deleted — %s", f)
-    except Exception as e:
-        logger.warning("Local file cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
-
     return {"status": "deleted", "doc_id": row["doc_id"]}

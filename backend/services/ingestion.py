@@ -1,4 +1,5 @@
 import os
+import io
 import uuid
 import time
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -198,33 +199,35 @@ def _load_docx(file_path: str) -> list[Document]:
 
 
 def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None) -> dict:
+    import tempfile
+
     if doc_id is None:
         doc_id = str(uuid.uuid4())[:12]
     ext = os.path.splitext(filename)[1].lower()
     logger.info("Starting ingestion — file=%s, ext=%s, doc_id=%s", filename, ext, doc_id)
 
-    upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, f"{doc_id}_{filename}")
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
-    logger.debug("File saved — path=%s, bytes=%d", file_path, len(file_bytes))
-
     # ── Load document ──────────────────────────────────────────────────
     load_start = time.time()
-    if ext == ".pdf":
-        docs = _load_pdf(file_path)
-        table_docs = _extract_tables_as_docs_pdf(file_path, doc_id, filename)
-    elif ext == ".docx":
-        docs = _load_docx(file_path)
-        table_docs = _extract_tables_as_docs_docx(file_path, doc_id, filename)
-    elif ext in [".jpg", ".jpeg", ".png"]:
-        image = Image.open(file_path)
+    if ext in [".jpg", ".jpeg", ".png"]:
+        image = Image.open(io.BytesIO(file_bytes))
         text = pytesseract.image_to_string(image)
         docs = [Document(page_content=text, metadata={"source": filename})]
         table_docs = []
     else:
-        raise ValueError(f"Unsupported file type: {ext}")
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        try:
+            if ext == ".pdf":
+                docs = _load_pdf(tmp_path)
+                table_docs = _extract_tables_as_docs_pdf(tmp_path, doc_id, filename)
+            elif ext == ".docx":
+                docs = _load_docx(tmp_path)
+                table_docs = _extract_tables_as_docs_docx(tmp_path, doc_id, filename)
+            else:
+                raise ValueError(f"Unsupported file type: {ext}")
+        finally:
+            os.unlink(tmp_path)
     load_elapsed = time.time() - load_start
     logger.info(
         "Document loaded — pages=%d, table_chunks=%d, elapsed=%.2fs",
