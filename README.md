@@ -8,41 +8,51 @@
 ## Pipeline Architecture
 
 ```
-User Upload (PDF / DOCX)
+User Upload (PDF / DOCX / JPG / JPEG / PNG)
          |
          v
     POST /chats/{id}/documents  -->  Document Loader  -->  Text Splitter (512/50)  -->  Qwen3-Embedding-8B (4096-dim)
-                                                                                           |
-                                                                                           v
-                                                                                 ChromaDB Vector Store
-                                                                                           |
-                                                                                           v
-User Question  -->  POST /chats/{id}/messages  -->  Hybrid Retriever  -->  LLM  -->  Answer + Sources
-                                           |
-                             +-------------+-------------+
-                             |             |             |
-                         BM25        Vector (k=5)   Multi-Query
-                       Keyword       ChromaDB       Generate N
-                       Search        Cosine         reformulations
-                             |             |             |
-                             +------+------+------+------+
-                                    |
-                             Reciprocal Rank
-                               Fusion (RRF)
-                                    |
-                                    v
-                            Top 5 Fused Results
-                                                                                     |
-                                                                            +---------+---------+---------+---------+
-                                                                            |         |         |                   |
-                                                                             LLM_PROVIDER LLM_PROVIDER LLM_PROVIDER    LLM_PROVIDER
-                                                                           = ollama     = gemini     = hf            = nvidia
-                                                                         llama3.2   gemini-2.5-flash-lite Qwen2.5-7B  nemotron-nano-9b-v2
-                                                                            |         |         |                   |
-                                                                            +---------+---------+---------+---------+
-                                                                                    |
-                                                                                    v
-                                                                              React Frontend
+                                                                                            |
+                                                                                    +-------+-------+
+                                                                                    |               |
+                                                                              ChromaDB         BM25 Index
+                                                                              Vector Store     (Keyword)
+                                                                                    |               |
+                                                                                    +-------+-------+
+                                                                                            |
+                                                                                  Reciprocal Rank
+                                                                                    Fusion (RRF)
+                                                                                            |
+                                                                                            v
+                                                                                    Top 10 Fused Results
+                                                                                            |
+                                                                                    +-------+-------+
+                                                                                    |               |
+                                                                              CrossEncoder    Source
+                                                                              Reranker        Filter
+                                                                                    |               |
+                                                                                    +-------+-------+
+                                                                                            |
+                                                                                    LLM (NVIDIA NIM)
+                                                                                    nemotron-nano-9b-v2
+                                                                                            |
+                                                                                    +-------+-------+
+                                                                                    |               |
+                                                                              Input           Output
+                                                                              Guardrails      Guardrails
+                                                                                    |               |
+                                                                                    +-------+-------+
+                                                                                            |
+                                                                                    NeMo Guardrails
+                                                                                    (Injection/Jailbreak)
+                                                                                            |
+                                                                                            v
+                                                                                    Answer + Cited Sources
+                                                                                            |
+                                                                                    +-------+-------+
+                                                                                    |               |
+                                                                              React           PdfViewer
+                                                                              Frontend        (in-app)
 ```
 
 ---
@@ -61,60 +71,66 @@ Health-Tech-RAG/
 │   ├── models/
 │   │   └── schemas.py           # Auth, session, document, message models
 │   ├── routes/
-│   │   ├── auth_routes.py       # POST /auth/signup, /login, /logout, /me, /google/url
+│   │   ├── auth_routes.py       # POST /auth/signup, /login, /logout, /me
 │   │   ├── chat_routes.py       # CRUD for /chats
-│   │   ├── document_routes.py   # Upload/list/delete documents in a chat
+│   │   ├── document_routes.py   # Upload/list/delete documents + PDF serving
 │   │   └── message_routes.py    # Send message + get chat history
 │   └── services/
 │       ├── __init__.py
 │       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace / NVIDIA)
 │       ├── embeddings.py        # Qwen3-Embedding-8B (4096-dim) via HuggingFace API
 │       ├── vectorstore.py       # ChromaDB integration with embedding function
-│       ├── ingestion.py         # PDF + DOCX → chunk → embed → store
-│       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF
-│       ├── query_engine.py      # RAG: retrieve context → LLM → answer
+│       ├── ingestion.py         # PDF + DOCX + Images → chunk → embed → store
+│       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF + CrossEncoder
+│       ├── query_engine.py      # RAG: retrieve → rerank → filter sources → LLM → answer
+│       ├── guardrails.py        # Input/Output guardrails + NeMo Guardrails integration
+│       ├── ocr_fallback.py      # Tesseract OCR for scanned PDF pages
+│       ├── api_key_manager.py   # Load-balanced API key rotation
 │       ├── auth_service.py      # Supabase auth (email/password + Google OAuth)
 │       ├── session_service.py   # Chat session CRUD
 │       ├── document_service.py  # Upload to Supabase Storage, status tracking
-│       └── message_service.py   # Chat history, conversation context
-├── frontend/                    # React app (Vite + Tailwind)
+│       ├── message_service.py   # Chat history, conversation context
+│       └── upload_utils.py      # Filename sanitization, file size validation
+├── config/
+│   ├── config.yml               # NeMo Guardrails config (NIM model settings)
+│   └── rails.co                 # NeMo Colang rules (mortgage domain enforcement)
+├── frontend/                    # React app (Vite + Tailwind + Framer Motion)
 │   ├── package.json
-│   ├── vite.config.js           # Proxy to backend:8001
+│   ├── vite.config.js           # Proxy to backend:8000
 │   ├── index.html
 │   └── src/
 │       ├── main.jsx
 │       ├── App.jsx              # Routes: Home, Login, Signup, Dashboard
-│       ├── App.css
-│       ├── api.js               # API client (auth, chats, docs, messages)
+│       ├── App.css              # Design system (glassmorphism, gradients, animations)
+│       ├── api.js               # API client (auth, chats, docs, messages, PDF URL)
 │       ├── context/
 │       │   └── AuthContext.jsx   # Auth state (token, user)
 │       ├── pages/
-│       │   ├── Home.jsx         # Landing page
-│       │   ├── Login.jsx        # Login form
-│       │   ├── Signup.jsx       # Signup form
-│       │   └── Dashboard.jsx    # Main app (chats + chat view)
+│       │   ├── Home.jsx         # Landing page with animated features
+│       │   ├── Login.jsx        # Login form with icons
+│       │   ├── Signup.jsx       # Signup form with icons
+│       │   └── Dashboard.jsx    # Main app (chats + chat view + PDF viewer)
 │       └── components/
 │           ├── ChatList.jsx     # Sidebar with chat sessions
-│           ├── ChatView.jsx     # Chat messages + file upload
+│           ├── ChatView.jsx     # Chat messages + source citations
 │           ├── Chatbox.jsx      # Chat input box
-│           ├── FileUpload.jsx   # PDF/DOCX upload
+│           ├── FileUpload.jsx   # Drag-and-drop upload zone
+│           ├── PdfViewer.jsx    # In-app PDF viewer (react-pdf)
 │           ├── Navbar.jsx       # Navigation bar
 │           ├── Sidebar.jsx      # Side panel
-│           ├── FeatureCard.jsx  # Feature cards
+│           ├── FeatureCard.jsx  # Feature cards (animated)
 │           └── TeamCard.jsx     # Team member cards
 ├── sql/
 │   └── schema.sql               # Supabase schema (profiles, sessions, documents, messages + RLS)
-├── prompts/
-│   └── health_system_prompt.txt # System prompt with few-shot examples
 ├── tests/
 │   ├── backend/
 │   │   └── test_retriever.py    # Chunk dedup tests
 │   └── evaluation/
 │       ├── documents/           # Mortgage PDFs for evaluation
 │       ├── golden_datasets/     # Golden dataset JSONs (275 questions)
-│       └── evaluate.py          # RAGAS evaluation script
+│       ├── evaluate.py          # RAGAS evaluation script
+│       └── test_answer_relevancy.py  # Quick metric verification
 ├── data/
-│   ├── uploaded_pdfs/           # Uploaded documents (local)
 │   └── chroma_db/               # Persistent ChromaDB
 ├── requirements.txt
 ├── .env.example
@@ -148,15 +164,37 @@ Required env vars:
 # LLM (pick one)
 LLM_PROVIDER=nvidia
 NVIDIA_API_KEY=your_nvidia_key
+# Or use load-balanced keys:
+# NVIDIA_API_KEYS=key1,key2,key3
 
 # Embeddings (required)
 HUGGINGFACEHUB_API_TOKEN=your_hf_token
+# Or load-balanced:
+# HF_API_KEYS=key1,key2,key3
 
 # Supabase (required for auth + chat sessions)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_STORAGE_BUCKET=documents
+
+# Guardrails
+INPUT_GUARDRAILS_ENABLED=true
+OUTPUT_GUARDRAILS_ENABLED=true
+NEMO_GUARDRAILS_ENABLED=true
+
+# Upload Security
+MAX_UPLOAD_BYTES=26214400
+ALLOW_RESET_COLLECTION=false
+
+# Retriever
+RETRIEVER_TOP_K=10
+MULTI_QUERY_ENABLED=true
+MULTI_QUERY_N=3
+
+# OCR (for scanned PDFs)
+OCR_FALLBACK_ENABLED=true
+TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
 ```
 
 ### 3. Setup Supabase
@@ -169,7 +207,7 @@ SUPABASE_STORAGE_BUCKET=documents
 ### 4. Start Backend
 
 ```bash
-uvicorn backend.main:app --reload --port 8001
+uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 5. Start Frontend
@@ -201,6 +239,14 @@ Open **http://localhost:3000**
 |-------|-----------|----------|------|
 | Qwen3-Embedding-8B | 4096 | `HUGGINGFACEHUB_API_TOKEN` | Free tier |
 
+### Supported File Types
+
+| Type | Extension | Method |
+|------|-----------|--------|
+| PDF | `.pdf` | PyMuPDF + OCR fallback |
+| Word | `.docx` | python-docx |
+| Image | `.jpg`, `.jpeg`, `.png` | Tesseract OCR |
+
 ### Logging
 
 | Variable | Default | Description |
@@ -216,13 +262,6 @@ logs.bat tail      # follow live (like tail -f)
 logs.bat dir       # open log folder in explorer
 ```
 
-**What's logged at each level:**
-
-| Level | What you see |
-|-------|-------------|
-| `INFO` | Request lifecycle, ingestion progress, LLM provider init, retrieval stats |
-| `DEBUG` | Chunk RRF scores, BM25/vector hit counts, prompt token count, ChromaDB distances |
-
 ### Retriever Settings
 
 | Variable | Default | Description |
@@ -230,6 +269,16 @@ logs.bat dir       # open log folder in explorer
 | `MULTI_QUERY_ENABLED` | `true` | Generate N reformulated queries for better recall |
 | `MULTI_QUERY_N` | `3` | Number of reformulated queries per question |
 | `RETRIEVER_TOP_K` | `10` | Number of chunks retrieved and sent to LLM |
+
+### Guardrails
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INPUT_GUARDRAILS_ENABLED` | `true` | Regex-based input safety (injection, jailbreak, harmful) |
+| `OUTPUT_GUARDRAILS_ENABLED` | `true` | Regex-based output filtering (length, prompt leakage) |
+| `NEMO_GUARDRAILS_ENABLED` | `true` | NeMo input safety (injection, jailbreak via LLM) |
+| `MAX_UPLOAD_BYTES` | `26214400` | Max upload size (25MB default) |
+| `ALLOW_RESET_COLLECTION` | `false` | Require auth + env flag for `/reset-collection` |
 
 ---
 
@@ -243,7 +292,6 @@ logs.bat dir       # open log folder in explorer
 | `/auth/login` | POST | Login, returns JWT |
 | `/auth/logout` | POST | Invalidate session |
 | `/auth/me` | GET | Get current user |
-| `/auth/google/url` | GET | Get Google OAuth URL |
 
 ### Chats
 
@@ -252,15 +300,16 @@ logs.bat dir       # open log folder in explorer
 | `/chats` | GET | List all chat sessions |
 | `/chats` | POST | Create new chat session |
 | `/chats/{id}` | PATCH | Rename chat |
-| `/chats/{id}` | DELETE | Delete chat + all documents + ChromaDB chunks + Storage + local files |
+| `/chats/{id}` | DELETE | Delete chat + all documents + ChromaDB chunks + Storage |
 
 ### Documents
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/chats/{id}/documents` | GET | List documents in chat |
-| `/chats/{id}/documents` | POST | Upload PDF/DOCX → ingest → store |
-| `/chats/{id}/documents/{doc_id}` | DELETE | Delete document ( ChromaDB + Storage + local file) |
+| `/chats/{id}/documents` | POST | Upload PDF/DOCX/Image → ingest → store |
+| `/chats/{id}/documents/{doc_id}` | DELETE | Delete document (ChromaDB + Storage) |
+| `/chats/{id}/documents/{doc_id}/pdf` | GET | Serve PDF for in-app viewer |
 
 ### Messages
 
@@ -276,19 +325,32 @@ logs.bat dir       # open log folder in explorer
 | `/health` | GET | Health check + provider info |
 | `/ingest` | POST | Upload and ingest a document |
 | `/query` | POST | RAG query without chat context |
-| `/reset-collection` | POST | Wipe and recreate ChromaDB collection |
+| `/reset-collection` | POST | Wipe and recreate ChromaDB collection (requires auth + env flag) |
 
 ---
 
 ## Frontend Features
 
-- **Auth** — Login/Signup with email + Google OAuth
+- **Auth** — Login/Signup with email
 - **Dashboard** — Chat list sidebar + chat view
-- **File Upload** — drag-and-drop or click to browse, accepts PDF and DOCX
+- **File Upload** — drag-and-drop zone, accepts PDF, DOCX, JPG, JPEG, PNG
 - **Chat Interface** — ask questions about uploaded mortgage documents
-- **Source Citations** — expandable source chunks for each answer
+- **Source Citations** — only sources cited by the LLM are shown
+- **PdfViewer** — in-app PDF viewer with page navigation and zoom
+- **Source-to-PDF Link** — click a source to open the PDF at that page
 - **Chat History** — persistent messages across sessions
 - **Auto-scroll** — chat scrolls to latest message
+- **Animations** — framer-motion entry animations, hover effects, glassmorphism
+
+## Security Features
+
+- **Filename Sanitization** — prevents path traversal and null byte injection
+- **File Size Validation** — configurable max upload size (25MB default)
+- **Input Guardrails** — blocks prompt injection, jailbreak, harmful content
+- **Output Guardrails** — filters prompt leakage, truncates long responses
+- **NeMo Guardrails** — LLM-based injection/jailbreak detection
+- **Auth Required** — reset collection requires authentication + env flag
+- **No Local Storage** — files processed via tempfile, deleted after ingestion
 
 ## Use Cases
 
@@ -315,15 +377,16 @@ tests/evaluation/
 3. Run evaluation:
 
 ```bash
-python -m tests.evaluation.evaluate
+python -m tests.evaluation.evaluate --resume
 ```
 
 **What it does:**
 1. Ingests all docs from `documents/`
 2. Loads all Q&A pairs from `golden_datasets/`
 3. Runs RAG pipeline on each question
-4. Evaluates with RAGAS metrics
+4. Evaluates with RAGAS collections metrics
 5. Saves report to `docs/eval_report.md`
+6. Supports `--resume` to continue from last checkpoint
 
 **Metrics:**
 | Metric | Target | What It Measures |
@@ -336,7 +399,7 @@ python -m tests.evaluation.evaluate
 
 ## Important Rules
 
-1. **Never hardcode API keys** — use `.env`
+1. **Never hardcode API keys** — use `.env` or load-balanced keys
 2. **Always set chunk_overlap=50** — never 0
 3. **Commit daily** — no version control = risk
 4. **Test retrieval before building generation**
