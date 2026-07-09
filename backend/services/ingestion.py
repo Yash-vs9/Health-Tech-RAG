@@ -11,6 +11,7 @@ from .ocr_fallback import apply_ocr_fallback
 from PIL import Image
 import pytesseract
 from backend.services.retriever import refresh_bm25
+from .upload_utils import safe_filename
 
 logger = get_logger("backend.ingestion")
 
@@ -203,6 +204,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 
     if doc_id is None:
         doc_id = str(uuid.uuid4())[:12]
+    safe_name = safe_filename(filename)
     ext = os.path.splitext(filename)[1].lower()
     logger.info("Starting ingestion — file=%s, ext=%s, doc_id=%s", filename, ext, doc_id)
 
@@ -312,7 +314,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 
     return {
         "doc_id": doc_id,
-        "filename": filename,
+        "filename": safe_name,
         "num_chunks": len(chunks) + len(table_docs),
         "num_tables": len(table_docs),
         "status": "success",
