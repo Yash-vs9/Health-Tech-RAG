@@ -36,10 +36,7 @@ from backend.logging_config import setup_logging, get_logger
 setup_logging()
 logger = get_logger("evaluation")
 
-from ragas import evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_precision
-from ragas.llms import LangchainLLMWrapper
-from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.metrics.collections import Faithfulness, AnswerRelevancy, ContextPrecision
 from datasets import Dataset
 
 from backend.services import ingestion, query_engine, vectorstore
@@ -241,7 +238,8 @@ def build_dataset(questions: list[dict]) -> Dataset:
 
 def _build_ragas_llm():
     """Build a RAGAS-compatible NVIDIA LLM via llm_factory (OpenAI-compatible)."""
-    from openai import OpenAI
+    from openai import AsyncOpenAI
+    import httpx
 
     api_keys_env = os.getenv("NVIDIA_API_KEYS", "") or os.getenv("NVIDIA_API_KEY", "")
     if "," in api_keys_env:
@@ -252,11 +250,13 @@ def _build_ragas_llm():
     if not api_key:
         raise ValueError("NVIDIA_API_KEY or NVIDIA_API_KEYS not set in .env")
 
-    model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
+    model = os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct")
 
-    client = OpenAI(
+    client = AsyncOpenAI(
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=api_key,
+        timeout=httpx.Timeout(600.0, connect=10.0),
+        max_retries=2,
     )
 
     from ragas.llms import llm_factory
@@ -264,16 +264,33 @@ def _build_ragas_llm():
         model=model,
         provider="openai",
         client=client,
-        temperature=float(os.getenv("LLM_TEMPERATURE", "0.0")),
-        max_tokens=int(os.getenv("NVIDIA_MAX_TOKENS", "4096")),
+        temperature=0.0,
+        max_tokens=4096,
     )
 
 
 def _build_ragas_embeddings():
-    """Build RAGAS-compatible embeddings using the app's load-balanced embeddings."""
-    from backend.services.embeddings import get_embeddings
-    from ragas.embeddings import LangchainEmbeddingsWrapper
-    return LangchainEmbeddingsWrapper(get_embeddings())
+    """Build RAGAS-compatible embeddings using the app's load-balanced system."""
+    from ragas.embeddings.base import BaseRagasEmbedding
+
+    class LoadBalancedRagasEmbedding(BaseRagasEmbedding):
+        """Wrap app's load-balanced HF embeddings for RAGAS."""
+        PROVIDER_NAME = "huggingface"
+        REQUIRES_MODEL = False
+
+        def __init__(self):
+            from backend.services.embeddings import get_embeddings
+            self._inner = get_embeddings()
+            super().__init__()
+
+        def embed_text(self, text: str) -> list:
+            return self._inner.embed_query(text)
+
+        async def aembed_text(self, text: str) -> list:
+            import asyncio
+            return await asyncio.to_thread(self._inner.embed_query, text)
+
+    return LoadBalancedRagasEmbedding()
 
 
 def run_evaluation(resume: bool = False):
@@ -319,23 +336,85 @@ def run_evaluation(resume: bool = False):
     ragas_embeddings = _build_ragas_embeddings()
     logger.info("RAGAS wrappers ready — using NVIDIA llm_factory + HF embeddings")
 
+    faithfulness_metric = Faithfulness(llm=ragas_llm)
+    relevancy_metric = AnswerRelevancy(llm=ragas_llm, embeddings=ragas_embeddings)
+    precision_metric = ContextPrecision(llm=ragas_llm)
+
     ragas_start = time.time()
-    results = evaluate(
-        dataset=dataset,
-        metrics=[faithfulness, answer_relevancy, context_precision],
-        llm=ragas_llm,
-        embeddings=ragas_embeddings,
-    )
+    total = len(dataset)
+    logger.info("Starting RAGAS evaluation — %d questions...", total)
+
+    faith_scores = []
+    rel_scores = []
+    prec_scores = []
+
+    async def _score_all():
+        for i in range(total):
+            row = {
+                "question": dataset["question"][i],
+                "answer": dataset["answer"][i],
+                "contexts": dataset["contexts"][i],
+                "ground_truth": dataset["ground_truth"][i],
+            }
+
+            logger.info("[%d/%d] Scoring: %s", i + 1, total, row["question"][:60])
+
+            try:
+                faith = await faithfulness_metric.ascore(
+                    user_input=row["question"],
+                    response=row["answer"],
+                    retrieved_contexts=row["contexts"],
+                )
+                faith_scores.append(faith.value if hasattr(faith, "value") else float(faith))
+            except Exception as e:
+                logger.warning("  Faithfulness failed: %s", e)
+                faith_scores.append(None)
+
+            try:
+                rel = await relevancy_metric.ascore(
+                    user_input=row["question"],
+                    response=row["answer"],
+                )
+                rel_scores.append(rel.value if hasattr(rel, "value") else float(rel))
+            except Exception as e:
+                logger.warning("  AnswerRelevancy failed: %s", e)
+                rel_scores.append(None)
+
+            try:
+                prec = await precision_metric.ascore(
+                    user_input=row["question"],
+                    reference=row["ground_truth"],
+                    retrieved_contexts=row["contexts"],
+                )
+                prec_scores.append(prec.value if hasattr(prec, "value") else float(prec))
+            except Exception as e:
+                logger.warning("  ContextPrecision failed: %s", e)
+                prec_scores.append(None)
+
+            logger.info("  [%.1f%%] faith=%.3f rel=%.3f prec=%.3f",
+                (i + 1) / total * 100,
+                faith_scores[-1] if faith_scores[-1] is not None else 0,
+                rel_scores[-1] if rel_scores[-1] is not None else 0,
+                prec_scores[-1] if prec_scores[-1] is not None else 0,
+            )
+
+    import asyncio
+    asyncio.run(_score_all())
+
     ragas_elapsed = time.time() - ragas_start
 
-    df = results.to_pandas()
-    scores = {
-        "faithfulness": float(df["faithfulness"].mean()),
-        "answer_relevancy": float(df["answer_relevancy"].mean()),
-        "context_precision": float(df["context_precision"].mean()),
-    }
+    def _safe_mean(vals):
+        clean = [v for v in vals if v is not None]
+        return sum(clean) / len(clean) if clean else float("nan")
 
-    logger.info("RAGAS scores computed — elapsed=%.1fs", ragas_elapsed)
+    scores = {
+        "faithfulness": _safe_mean(faith_scores),
+        "answer_relevancy": _safe_mean(rel_scores),
+        "context_precision": _safe_mean(prec_scores),
+    }
+    nan_count = sum(1 for v in faith_scores if v is None)
+
+    logger.info("RAGAS scores computed — elapsed=%.1fs, failed=%d/%d", ragas_elapsed, nan_count, total)
     logger.info("  Faithfulness:      %.3f", scores["faithfulness"])
     logger.info("  Answer Relevancy:  %.3f", scores["answer_relevancy"])
     logger.info("  Context Precision: %.3f", scores["context_precision"])
