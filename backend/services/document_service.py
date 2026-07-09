@@ -89,7 +89,7 @@ def get_document(user_id: str, document_id: str) -> dict:
     client = get_admin_client()
     result = client.table("documents") \
         .select("*") \
-        .eq("id", document_id) \
+        .eq("doc_id", document_id) \
         .eq("user_id", user_id) \
         .neq("status", "deleted") \
         .maybe_single() \

@@ -264,6 +264,15 @@ class NemoGuardrails:
         self._rails = None
         if enabled:
             try:
+                # NeMo needs a single NVIDIA_API_KEY — extract one from load-balanced keys
+                api_key = os.getenv("NVIDIA_API_KEY")
+                if not api_key:
+                    keys_raw = os.getenv("NVIDIA_API_KEYS", "")
+                    keys = [k.strip() for k in keys_raw.split(",") if k.strip()]
+                    if keys:
+                        api_key = keys[0]
+                        os.environ["NVIDIA_API_KEY"] = api_key
+
                 from nemoguardrails import LLMRails, RailsConfig
                 config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config")
                 config = RailsConfig.from_path(config_path)
