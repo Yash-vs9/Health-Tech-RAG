@@ -10,7 +10,13 @@ async function request(method, path, body = null, token = null) {
   const res = await fetch(`${API_BASE}${path}`, opts);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+    let errorMsg = 'Request failed';
+    if (Array.isArray(err.detail)) {
+      errorMsg = err.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+    } else if (err.detail) {
+      errorMsg = err.detail;
+    }
+    throw new Error(errorMsg);
   }
   return res.json();
 }
@@ -55,6 +61,8 @@ export const api = {
     request('GET', `/chats/${chatId}/documents`, null, token),
   deleteDoc: (token, chatId, docId) =>
     request('DELETE', `/chats/${chatId}/documents/${docId}`, null, token),
+  getDocPdfUrl: (token, chatId, docId) =>
+    `${API_BASE}/chats/${chatId}/documents/${docId}/pdf`,
 
   // Messages
   sendMessage: (token, chatId, question) =>

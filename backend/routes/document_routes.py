@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from backend.models.schemas import DocumentResponse
 from backend.services import auth_service, document_service, session_service, ingestion
 from backend.services import vectorstore
 from backend.services.upload_utils import get_max_upload_bytes, get_upload_file_size, safe_filename
+from backend.db.supabase_client import get_admin_client
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.routes.documents")
@@ -96,3 +98,23 @@ async def delete_document(chat_session_id: str, document_id: str, user: dict = D
         logger.warning("ChromaDB cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
 
     return {"status": "deleted", "doc_id": row["doc_id"]}
+
+
+@router.get("/{document_id}/pdf")
+async def get_document_pdf(chat_session_id: str, document_id: str, user: dict = Depends(auth_service.get_current_user)):
+    try:
+        row = document_service.get_document(user["id"], document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    storage_path = row.get("storage_path")
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="PDF not available in storage")
+
+    try:
+        client = get_admin_client()
+        file_bytes = client.storage.from_(document_service.BUCKET).download(storage_path)
+        return Response(content=file_bytes, media_type="application/pdf")
+    except Exception as e:
+        logger.error("PDF download failed — doc_id=%s, error=%s", row["doc_id"], e)
+        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {e}")
