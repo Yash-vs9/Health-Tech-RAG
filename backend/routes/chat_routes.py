@@ -7,6 +7,7 @@ from backend.models.schemas import (
     CreateChatSessionRequest, ChatSessionResponse, RenameChatSessionRequest,
 )
 from backend.services import auth_service, session_service
+from backend.services.upload_utils import safe_filename
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ async def delete_chat(chat_session_id: str, user: dict = Depends(auth_service.ge
                 logger.warning("Storage cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
 
             # Delete local PDF file
-            local_path = os.path.join("data", "uploaded_pdfs", f"{doc['doc_id']}_{doc['filename']}")
+            local_path = os.path.join("data", "uploaded_pdfs", f"{doc['doc_id']}_{safe_filename(doc['filename'])}")
             try:
                 if os.path.exists(local_path):
                     os.remove(local_path)

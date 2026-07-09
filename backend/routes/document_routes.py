@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from backend.models.schemas import DocumentResponse
 from backend.services import auth_service, document_service, session_service, ingestion
 from backend.services import vectorstore
+from backend.services.upload_utils import get_max_upload_bytes, get_upload_file_size, safe_filename
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.routes.documents")
@@ -20,9 +21,18 @@ async def upload_document(
     file: UploadFile = File(...),
     user: dict = Depends(auth_service.get_current_user),
 ):
-    ext = os.path.splitext(file.filename or "")[1].lower()
+    original_filename = file.filename or ""
+    ext = os.path.splitext(original_filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Only PDF and DOCX files are accepted. Got: {ext}")
+
+    if get_upload_file_size(file) > get_max_upload_bytes():
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+
+    try:
+        safe_filename(original_filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     session = session_service.get_chat_session(user["id"], chat_session_id)
     if not session:
@@ -34,7 +44,7 @@ async def upload_document(
     row = document_service.create_document_row(
         user_id=user["id"],
         chat_session_id=chat_session_id,
-        filename=file.filename,
+        filename=original_filename,
         file_size=len(file_bytes),
     )
 
@@ -42,7 +52,7 @@ async def upload_document(
     try:
         result = ingestion.ingest_document(
             file_bytes=file_bytes,
-            filename=file.filename,
+            filename=original_filename,
             doc_id=row["doc_id"],
         )
     except Exception as e:
@@ -55,7 +65,7 @@ async def upload_document(
         document_service.upload_to_storage(
             user_id=user["id"],
             doc_id=row["doc_id"],
-            filename=file.filename,
+            filename=original_filename,
             file_bytes=file_bytes,
         )
         document_service.mark_document_ready(row["id"], result["num_chunks"])

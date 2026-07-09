@@ -4,6 +4,7 @@ import os
 import uuid
 from backend.db.supabase_client import get_admin_client
 from backend.logging_config import get_logger
+from .upload_utils import safe_filename
 
 logger = get_logger("backend.documents")
 
@@ -43,7 +44,7 @@ def create_document_row(
 def upload_to_storage(user_id: str, doc_id: str, filename: str, file_bytes: bytes) -> str:
     """Upload file to Supabase Storage. Returns storage_path."""
     client = get_admin_client()
-    storage_path = f"{user_id}/{doc_id}_{filename}"
+    storage_path = f"{user_id}/{doc_id}_{safe_filename(filename)}"
 
     client.storage.from_(BUCKET).upload(
         path=storage_path,

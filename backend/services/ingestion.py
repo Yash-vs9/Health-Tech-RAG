@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from backend.logging_config import get_logger
 from .embeddings import get_embeddings
 from . import vectorstore
+from .upload_utils import safe_filename
 
 logger = get_logger("backend.ingestion")
 
@@ -189,12 +190,13 @@ def _load_docx(file_path: str) -> list[Document]:
 def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None) -> dict:
     if doc_id is None:
         doc_id = str(uuid.uuid4())[:12]
+    safe_name = safe_filename(filename)
     ext = os.path.splitext(filename)[1].lower()
     logger.info("Starting ingestion — file=%s, ext=%s, doc_id=%s", filename, ext, doc_id)
 
     upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
     os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, f"{doc_id}_{filename}")
+    file_path = os.path.join(upload_dir, f"{doc_id}_{safe_name}")
     with open(file_path, "wb") as f:
         f.write(file_bytes)
     logger.debug("File saved — path=%s, bytes=%d", file_path, len(file_bytes))
@@ -292,7 +294,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 
     return {
         "doc_id": doc_id,
-        "filename": filename,
+        "filename": safe_name,
         "num_chunks": len(chunks) + len(table_docs),
         "num_tables": len(table_docs),
         "status": "success",
