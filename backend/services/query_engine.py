@@ -218,14 +218,43 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
 
     # ── Filter sources to only those cited in the answer ─────────────
     cited_indices = set()
+
+    # 1. Match "Source N" pattern
     for match in re.finditer(r"Source\s+(\d+)", answer, re.IGNORECASE):
-        cited_indices.add(int(match.group(1)) - 1)  # 0-indexed
+        idx = int(match.group(1)) - 1
+        if 0 <= idx < len(sources):
+            cited_indices.add(idx)
+
+    # 2. Match filenames mentioned in the answer (e.g., "ABC_Bank_Annual_Report_2024_Full.pdf")
+    answer_lower = answer.lower()
+    for i, s in enumerate(sources):
+        meta = s.get("metadata", {})
+        filename = meta.get("filename", "")
+        if filename and filename.lower() in answer_lower:
+            cited_indices.add(i)
+
+    # 3. Match page numbers mentioned near document references
+    for match in re.finditer(r"[Pp]age\s+(\d+)", answer):
+        page_num = int(match.group(1))
+        for i, s in enumerate(sources):
+            meta = s.get("metadata", {})
+            src_page = meta.get("page_number", meta.get("page"))
+            if src_page is not None:
+                try:
+                    if int(src_page) == page_num:
+                        cited_indices.add(i)
+                except (ValueError, TypeError):
+                    pass
 
     if cited_indices:
         filtered_sources = [s for i, s in enumerate(sources) if i in cited_indices]
+        # Sort by reranker score (highest first)
+        filtered_sources.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
         logger.info("Filtered sources — cited=%d, total=%d", len(filtered_sources), len(sources))
     else:
-        filtered_sources = sources
+        # No citations found — return top 3 by reranker score
+        filtered_sources = sorted(sources, key=lambda x: x.get("rrf_score", 0), reverse=True)[:3]
+        logger.info("No citations found — returning top 3 by score")
 
     return {
         "answer": answer,
