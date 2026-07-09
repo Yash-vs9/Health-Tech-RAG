@@ -68,7 +68,7 @@ class DocumentResponse(BaseModel):
     chat_session_id: str
     filename: str
     doc_id: str
-    num_chunks: int
+    num_chunks: Optional[int] = None
     status: str
     file_size_bytes: Optional[int] = None
     uploaded_at: datetime
@@ -77,7 +77,6 @@ class DocumentResponse(BaseModel):
 # ── Messages ──────────────────────────────────────────────────────────────
 
 class SendMessageRequest(BaseModel):
-    chat_session_id: str
     question: str
 
 

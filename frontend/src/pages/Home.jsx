@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FeatureCard from "../components/FeatureCard";
 import TeamCard from "../components/TeamCard";
-import { ArrowRight, FileText, BarChart3, Lock } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const features = [
   { icon: "upload", title: "Secure Document Upload", description: "Upload bank statements, PDFs, and financial reports with bank-grade encryption." },

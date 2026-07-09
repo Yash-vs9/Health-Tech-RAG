@@ -54,7 +54,7 @@ async def health_check():
             version="1.0.0",
             chromadb=f"connected ({count} chunks)",
             llm=llm_provider,
-            embeddings=embed_provider,
+            embeddings="Qwen3-Embedding-8B",
         )
     except Exception as e:
         logger.error("Health check failed: %s", e)

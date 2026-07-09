@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import os
-import logging
 from fastapi import APIRouter, Depends, HTTPException
 from backend.models.schemas import (
     CreateChatSessionRequest, ChatSessionResponse, RenameChatSessionRequest,
 )
 from backend.services import auth_service, session_service
+from backend.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("backend.routes.chat")
 
 router = APIRouter(prefix="/chats", tags=["chat-sessions"])
 

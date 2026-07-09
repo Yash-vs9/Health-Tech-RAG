@@ -14,7 +14,7 @@ logger = get_logger("backend.routes.documents")
 
 router = APIRouter(prefix="/chats/{chat_session_id}/documents", tags=["documents"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
 
 
 @router.post("", response_model=DocumentResponse)

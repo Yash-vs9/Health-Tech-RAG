@@ -31,9 +31,6 @@ class _Qwen3EmbeddingFunction(EmbeddingFunction):
         from .embeddings import get_embeddings
         return _Qwen3EmbeddingFunction(get_embeddings())
 
-_client: chromadb.ClientAPI | None = None
-_collection: chromadb.Collection | None = None
-
 
 def get_client() -> chromadb.ClientAPI:
     global _client
