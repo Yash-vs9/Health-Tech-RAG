@@ -21,6 +21,7 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
   const [scale, setScale] = useState(1.2);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imageBlobUrl, setImageBlobUrl] = useState(null);
   const containerRef = useRef(null);
 
   const isImage = isImageFile(filename);
@@ -30,6 +31,39 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
       setCurrentPage(initialPage);
     }
   }, [initialPage]);
+
+  // Fetch image as blob with auth token
+  useEffect(() => {
+    if (!isImage || !pdfUrl || !token) return;
+
+    let blobUrl = null;
+    const controller = new AbortController();
+
+    fetch(pdfUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load image');
+        return res.blob();
+      })
+      .then(blob => {
+        blobUrl = URL.createObjectURL(blob);
+        setImageBlobUrl(blobUrl);
+        setLoading(false);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          setError('Failed to load image. Please try again.');
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [isImage, pdfUrl, token]);
 
   const onDocumentLoadSuccess = useCallback(({ numPages: total }) => {
     setNumPages(total);
@@ -44,16 +78,6 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
     setError('Failed to load PDF. Please try again.');
     setLoading(false);
     console.error('PDF load error:', err);
-  }, []);
-
-  const onImageLoad = useCallback(() => {
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  const onImageError = useCallback(() => {
-    setError('Failed to load image. Please try again.');
-    setLoading(false);
   }, []);
 
   const goToPrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
@@ -140,14 +164,13 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
         )}
 
         {isImage ? (
-          <img
-            src={pdfUrl}
-            alt={filename}
-            style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}
-            onLoad={onImageLoad}
-            onError={onImageError}
-            crossOrigin="anonymous"
-          />
+          imageBlobUrl && (
+            <img
+              src={imageBlobUrl}
+              alt={filename}
+              style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            />
+          )
         ) : (
           <Document
             file={{ url: pdfUrl, httpHeaders: { Authorization: `Bearer ${token}` } }}

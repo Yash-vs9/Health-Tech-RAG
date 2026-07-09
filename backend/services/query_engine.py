@@ -252,9 +252,9 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
         filtered_sources.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
         logger.info("Filtered sources — cited=%d, total=%d", len(filtered_sources), len(sources))
     else:
-        # No citations found — return top 1 by reranker score
-        filtered_sources = sorted(sources, key=lambda x: x.get("rrf_score", 0), reverse=True)[:1]
-        logger.info("No citations found — returning top 1 by score")
+        # No citations found — return top 3 by reranker score
+        filtered_sources = sorted(sources, key=lambda x: x.get("rrf_score", 0), reverse=True)[:3]
+        logger.info("No citations found — returning top 3 by score")
 
     return {
         "answer": answer,
