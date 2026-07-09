@@ -19,7 +19,7 @@ from backend.routes import auth_routes, chat_routes, document_routes, message_ro
 setup_logging()
 logger = get_logger("backend.main")
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
 
 app = FastAPI(
     title="Mortgage RAG API",
@@ -70,7 +70,7 @@ async def ingest(file: UploadFile = File(...)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         logger.warning("Ingest rejected — unsupported file type: %s", ext)
-        raise HTTPException(status_code=400, detail=f"Only PDF and DOCX files are accepted. Got: {ext}")
+        raise HTTPException(status_code=400, detail=f"Only PDF, DOCX, JPG, JPEG and PNG files are accepted. Got: {ext}")
 
     logger.info("Ingest request — file=%s, size=%s", file.filename, file.size)
     start = time.time()

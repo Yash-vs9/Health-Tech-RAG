@@ -7,6 +7,9 @@ from backend.logging_config import get_logger
 from .embeddings import get_embeddings
 from . import vectorstore
 from .ocr_fallback import apply_ocr_fallback
+from PIL import Image
+import pytesseract
+from backend.services.retriever import refresh_bm25
 
 logger = get_logger("backend.ingestion")
 
@@ -215,6 +218,11 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
     elif ext == ".docx":
         docs = _load_docx(file_path)
         table_docs = _extract_tables_as_docs_docx(file_path, doc_id, filename)
+    elif ext in [".jpg", ".jpeg", ".png"]:
+        image = Image.open(file_path)
+        text = pytesseract.image_to_string(image)
+        docs = [Document(page_content=text, metadata={"source": filename})]
+        table_docs = []
     else:
         raise ValueError(f"Unsupported file type: {ext}")
     load_elapsed = time.time() - load_start
@@ -292,6 +300,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 
     store_start = time.time()
     vectorstore.add_documents(documents=documents, metadatas=metadatas, ids=ids)
+    refresh_bm25()
     store_elapsed = time.time() - store_start
     logger.info(
         "Stored in ChromaDB — text_chunks=%d, table_chunks=%d, elapsed=%.2fs, total=%d",
