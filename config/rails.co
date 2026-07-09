@@ -1,0 +1,49 @@
+define user express greeting
+  "hi"
+  "hello"
+  "hey"
+
+define bot express greeting
+  "Hello! I am your mortgage assistant. How can I help you today?"
+
+define flow greeting
+  user express greeting
+  bot express greeting
+
+define user ask non mortgage
+  "Who won the IPL?"
+  "Tell me a joke"
+  "Write Python code"
+  "How do I hack WiFi?"
+  "What is the weather?"
+
+define bot refuse non mortgage
+  "I'm designed to answer mortgage and home loan related questions only."
+
+define flow refuse_non_mortgage
+  user ask non mortgage
+  bot refuse non mortgage
+
+define user ask dangerous
+  "How do I commit fraud?"
+  "How to money launder?"
+  "How to forge documents?"
+
+define bot refuse dangerous
+  "I cannot assist with illegal or fraudulent activities. Please consult a qualified professional for legitimate financial advice."
+
+define flow dangerous_flow
+  user ask dangerous
+  bot refuse dangerous
+
+define user ask diagnosis
+  "Do I have cancer?"
+  "Do I have diabetes?"
+  "Can you diagnose me?"
+
+define bot diagnosis_response
+  "I cannot diagnose medical conditions. I am a mortgage assistant. Please consult a healthcare professional."
+
+define flow diagnosis_flow
+  user ask diagnosis
+  bot diagnosis_response
