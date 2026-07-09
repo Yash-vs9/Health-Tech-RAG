@@ -1,5 +1,6 @@
 import os
 import io
+import base64
 import uuid
 import time
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -14,6 +15,88 @@ from backend.services.retriever import refresh_bm25
 from .upload_utils import safe_filename
 
 logger = get_logger("backend.ingestion")
+
+
+# ── Chart understanding via Vision LLM ─────────────────────────────────────
+
+
+def _describe_chart_with_vision(image: Image.Image, filename: str) -> str | None:
+    """
+    Use NVIDIA NIM vision model to describe chart data from an image.
+    Returns extracted data description or None if unavailable.
+    """
+    import os
+    import base64
+    import tempfile
+
+    vision_model = os.getenv("VISION_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1")
+    api_keys_raw = os.getenv("NVIDIA_API_KEYS", os.getenv("NVIDIA_API_KEY", ""))
+    if not api_keys_raw:
+        logger.warning("No NVIDIA API keys found for vision model")
+        return None
+
+    api_key = api_keys_raw.split(",")[0].strip()
+    if not api_key:
+        logger.warning("Empty NVIDIA API key")
+        return None
+
+    logger.info("Calling vision model %s for chart: %s", vision_model, filename)
+
+    try:
+        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+
+        # Convert image to base64
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            image.save(tmp.name, format="PNG")
+            tmp_path = tmp.name
+
+        try:
+            with open(tmp_path, "rb") as f:
+                img_base64 = base64.b64encode(f.read()).decode("utf-8")
+        finally:
+            os.unlink(tmp_path)
+
+        llm = ChatNVIDIA(
+            model=vision_model,
+            api_key=api_key,
+            temperature=0.0,
+            max_tokens=2048,
+        )
+
+        from langchain_core.messages import HumanMessage
+
+        prompt = """Analyze this chart image and extract ALL numerical data. Format your response as:
+
+CHART TYPE: [bar chart/line graph/pie chart/etc.]
+
+TITLE: [chart title if visible]
+
+AXES:
+- X-axis: [label and values/categories]
+- Y-axis: [label and values/range]
+
+DATA:
+[List each data point with exact values. For bar charts: category = value. For line charts: (x, y) pairs.]
+
+SUMMARY: [1-2 sentence summary of what the chart shows]"""
+
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{img_base64}"},
+                },
+            ]
+        )
+
+        result = llm.invoke([message])
+        logger.info("Vision model response length: %d chars", len(result.content))
+        return result.content
+
+    except Exception as e:
+        logger.warning("Vision model failed for chart description: %s", e)
+        return None
 
 
 # ── Table extraction helpers ─────────────────────────────────────────────
@@ -212,8 +295,40 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
     load_start = time.time()
     if ext in [".jpg", ".jpeg", ".png"]:
         image = Image.open(io.BytesIO(file_bytes))
-        text = pytesseract.image_to_string(image)
-        docs = [Document(page_content=text, metadata={"source": filename})]
+
+        # Always use vision model for images to extract chart data
+        # Vision model provides much richer information than OCR alone
+        logger.info("Using vision model for image: %s", filename)
+        chart_description = _describe_chart_with_vision(image, filename)
+
+        if chart_description and len(chart_description.strip()) > 50:
+            docs = [Document(
+                page_content=f"[Image: {filename}]\n{chart_description}",
+                metadata={"source": filename, "is_image": True, "image_type": "chart"},
+            )]
+        else:
+            # Fallback to OCR if vision model fails
+            logger.warning("Vision model failed, falling back to OCR for: %s", filename)
+            ocr_configs = [
+                "--psm 3",   # Fully automatic page segmentation
+                "--psm 6",   # Assume uniform block of text
+                "--psm 11",  # Sparse text without order
+                "--psm 12",  # Sparse text with order
+            ]
+
+            best_text = ""
+            for config in ocr_configs:
+                try:
+                    text = pytesseract.image_to_string(image, config=config)
+                    if len(text.strip()) > len(best_text.strip()):
+                        best_text = text
+                except Exception:
+                    continue
+
+            docs = [Document(
+                page_content=f"[Image: {filename}]\n{best_text}",
+                metadata={"source": filename, "is_image": True, "image_type": "text_document"},
+            )]
         table_docs = []
     else:
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:

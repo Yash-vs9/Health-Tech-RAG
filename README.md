@@ -245,7 +245,15 @@ Open **http://localhost:3000**
 |------|-----------|--------|
 | PDF | `.pdf` | PyMuPDF + OCR fallback |
 | Word | `.docx` | python-docx |
-| Image | `.jpg`, `.jpeg`, `.png` | Tesseract OCR |
+| Image | `.jpg`, `.jpeg`, `.png` | Tesseract OCR + Vision LLM (for charts/graphs) |
+
+### Vision Model (Chart Understanding)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VISION_MODEL` | `nvidia/llama-3.1-nemotron-nano-vl-8b-v1` | NVIDIA NIM vision model for chart/graph extraction |
+
+When an image has low OCR text (<50 chars), the system automatically uses a vision LLM to extract chart data including chart type, axes, data points, and summary.
 
 ### Logging
 
