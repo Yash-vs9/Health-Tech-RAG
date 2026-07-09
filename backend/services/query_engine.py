@@ -216,7 +216,18 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
         len(answer), llm_elapsed,
     )
 
+    # ── Filter sources to only those cited in the answer ─────────────
+    cited_indices = set()
+    for match in re.finditer(r"Source\s+(\d+)", answer, re.IGNORECASE):
+        cited_indices.add(int(match.group(1)) - 1)  # 0-indexed
+
+    if cited_indices:
+        filtered_sources = [s for i, s in enumerate(sources) if i in cited_indices]
+        logger.info("Filtered sources — cited=%d, total=%d", len(filtered_sources), len(sources))
+    else:
+        filtered_sources = sources
+
     return {
         "answer": answer,
-        "sources": sources,
+        "sources": filtered_sources,
     }
