@@ -282,29 +282,42 @@ class NemoGuardrails:
                 logger.warning("NeMo Guardrails init failed — falling back to regex: %s", e)
                 self._rails = None
 
-    async def check_and_generate(self, user_input: str, context: str = "") -> str | None:
+    async def check_input(self, user_input: str) -> str | None:
         """
-        Pass user input through NeMo rails. Returns guarded response or None if unavailable.
+        Check user input for safety issues (injection, jailbreak).
+        Returns blocked message or None if safe.
         """
         if not self.enabled or self._rails is None:
             return None
 
         try:
-            messages = []
-            if context:
-                messages.append({"role": "system", "content": context})
-            messages.append({"role": "user", "content": user_input})
+            messages = [{"role": "user", "content": user_input}]
 
             start = time.time()
             response = await self._rails.generate_async(messages=messages)
             elapsed = time.time() - start
-            logger.info("NeMo Guardrails response — elapsed=%.2fs", elapsed)
+            logger.info("NeMo Guardrails input check — elapsed=%.2fs", elapsed)
 
             if isinstance(response, dict):
-                return response.get("content", str(response))
-            return str(response)
+                response_text = response.get("content", str(response))
+            else:
+                response_text = str(response)
+
+            # If NeMo refused the question, return the refusal
+            refusal_keywords = [
+                "i'm designed to answer",
+                "i cannot assist",
+                "i cannot help",
+                "not able to assist",
+                "mortgage and home loan related questions only",
+            ]
+            if any(kw in response_text.lower() for kw in refusal_keywords):
+                logger.info("NeMo Guardrails blocked input — question rejected as non-mortgage")
+                return response_text
+
+            return None
         except Exception as e:
-            logger.warning("NeMo Guardrails check failed — %s", e)
+            logger.warning("NeMo Guardrails input check failed — %s", e)
             return None
 
 

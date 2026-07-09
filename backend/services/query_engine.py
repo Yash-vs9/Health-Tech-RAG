@@ -82,6 +82,17 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
             "blocked": True,
         }
 
+    # ── NeMo input safety check (injection/jailbreak) ─────────────────
+    nemo = get_nemo_guardrails()
+    nemo_blocked = await nemo.check_input(question)
+    if nemo_blocked is not None:
+        logger.warning("Input blocked by NeMo Guardrails")
+        return {
+            "answer": nemo_blocked,
+            "sources": [],
+            "blocked": True,
+        }
+
     # ── Greeting / small talk short-circuit (skip retrieval) ───────────
     if _GREETING_PATTERN.match(question):
         logger.info("Greeting detected — skipping retrieval")
@@ -199,16 +210,6 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
         answer = output_guard.sanitize(answer)
         if out_result.reason:
             logger.info("Output guardrail note — %s", out_result.reason)
-
-    # ── NeMo Guardrails (domain + safety check) ──────────────────────
-    nemo = get_nemo_guardrails()
-    nemo_response = await nemo.check_and_generate(
-        user_input=question,
-        context=f"LLM generated this answer from documents:\n{answer}",
-    )
-    if nemo_response is not None:
-        logger.info("NeMo Guardrails applied — replacing output")
-        answer = nemo_response
 
     logger.info(
         "LLM response — answer_len=%d, elapsed=%.2fs",
