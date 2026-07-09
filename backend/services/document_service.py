@@ -85,16 +85,16 @@ def list_documents(user_id: str, chat_session_id: str) -> list[dict]:
 
 
 def get_document(user_id: str, chat_session_id: str, document_id: str) -> dict | None:
-    """Return a single document row, or None if not found / not owned."""
+    """Return a single document row, or None if not found / not owned. Supports both UUID and short doc_id."""
     client = get_admin_client()
-    result = client.table("documents") \
-        .select("*") \
-        .eq("id", document_id) \
-        .eq("chat_session_id", chat_session_id) \
-        .eq("user_id", user_id) \
-        .neq("status", "deleted") \
-        .maybe_single() \
-        .execute()
+    query = client.table("documents").select("*").eq("chat_session_id", chat_session_id).eq("user_id", user_id).neq("status", "deleted")
+    
+    if len(document_id) == 36:
+        query = query.eq("id", document_id)
+    else:
+        query = query.eq("doc_id", document_id)
+        
+    result = query.maybe_single().execute()
     return result.data if result and result.data else None
 
 

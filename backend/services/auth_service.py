@@ -9,33 +9,36 @@ logger = get_logger("backend.auth")
 
 
 def signup_with_email(email: str, password: str, full_name: str | None = None) -> dict:
+    admin_client = get_admin_client()
     client = get_anon_client()
     try:
-        result = client.auth.sign_up({
+        # Create user via admin API to auto-confirm email
+        user_data = {
             "email": email,
             "password": password,
-            "options": {"data": {"full_name": full_name}} if full_name else {},
-        })
+            "email_confirm": True,
+        }
+        if full_name:
+            user_data["user_metadata"] = {"full_name": full_name}
+            
+        admin_client.auth.admin.create_user(user_data)
+        
+        # Now sign in to get the session tokens
+        sign_in_result = client.auth.sign_in_with_password({"email": email, "password": password})
+        
     except Exception as e:
         logger.warning("Signup failed — email=%s, error=%s", email, e)
         raise HTTPException(status_code=400, detail=str(e))
 
-    if result.user is None:
-        raise HTTPException(status_code=400, detail="Signup failed — no user returned")
+    if sign_in_result.user is None or sign_in_result.session is None:
+        raise HTTPException(status_code=400, detail="Signup succeeded but auto-login failed")
 
-    logger.info("User signed up — id=%s, email=%s", result.user.id, email)
-
-    if result.session is None:
-        return {
-            "user_id": result.user.id,
-            "email": email,
-            "requires_email_confirmation": True,
-        }
+    logger.info("User signed up and auto-confirmed — id=%s, email=%s", sign_in_result.user.id, email)
 
     return {
-        "access_token": result.session.access_token,
-        "refresh_token": result.session.refresh_token,
-        "user_id": result.user.id,
+        "access_token": sign_in_result.session.access_token,
+        "refresh_token": sign_in_result.session.refresh_token,
+        "user_id": sign_in_result.user.id,
         "email": email,
         "full_name": full_name,
     }

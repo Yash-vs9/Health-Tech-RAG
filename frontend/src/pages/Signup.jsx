@@ -11,6 +11,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e) => {
@@ -21,8 +22,6 @@ export default function Signup() {
       const data = await signup(email, password, fullName);
       if (data.access_token) {
         navigate("/dashboard");
-      } else {
-        setError("Account created! Please check your email to confirm.");
       }
     } catch (err) {
       setError(err.message || "Signup failed");
@@ -141,6 +140,7 @@ export default function Signup() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
                 style={{ paddingLeft: 42 }}
               />
             </div>

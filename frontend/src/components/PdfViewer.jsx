@@ -116,8 +116,7 @@ export default function PdfViewer({ pdfUrl, pageNumber: initialPage, filename, t
           </div>
         )}
         <Document
-          file={pdfUrl}
-          httpHeaders={{ Authorization: `Bearer ${token}` }}
+          file={{ url: pdfUrl, httpHeaders: { Authorization: `Bearer ${token}` } }}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
           loading=""

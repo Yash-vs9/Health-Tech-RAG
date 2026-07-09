@@ -10,7 +10,13 @@ async function request(method, path, body = null, token = null) {
   const res = await fetch(`${API_BASE}${path}`, opts);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+    let errorMsg = 'Request failed';
+    if (Array.isArray(err.detail)) {
+      errorMsg = err.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+    } else if (err.detail) {
+      errorMsg = err.detail;
+    }
+    throw new Error(errorMsg);
   }
   return res.json();
 }

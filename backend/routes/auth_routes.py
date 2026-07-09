@@ -39,9 +39,19 @@ async def logout(user: dict = Depends(auth_service.get_current_user)):
     return {"status": "logged_out"}
 
 
+from datetime import datetime
+
 @router.get("/me", response_model=UserProfile)
 async def me(user: dict = Depends(auth_service.get_current_user)):
     from backend.db.supabase_client import get_admin_client
     client = get_admin_client()
     result = client.table("profiles").select("*").eq("id", user["id"]).maybe_single().execute()
+    if not result.data:
+        return {
+            "id": user["id"],
+            "email": user["email"],
+            "full_name": user.get("full_name"),
+            "provider": "email",
+            "created_at": datetime.utcnow()
+        }
     return result.data

@@ -51,7 +51,7 @@ async def upload_document(
         document_service.mark_document_failed(row["id"], str(e))
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
 
-    # Step 3: Upload to Supabase Storage only after ingestion succeeds
+    # Step 3: Upload to Supabase Storage and save locally only after ingestion succeeds
     try:
         document_service.upload_to_storage(
             user_id=user["id"],
@@ -59,6 +59,13 @@ async def upload_document(
             filename=file.filename,
             file_bytes=file_bytes,
         )
+        # Save locally for serving PDF in the UI
+        upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
+        os.makedirs(upload_dir, exist_ok=True)
+        local_path = os.path.join(upload_dir, f"{row['doc_id']}_{file.filename}")
+        with open(local_path, "wb") as f:
+            f.write(file_bytes)
+            
         document_service.mark_document_ready(row["id"], result["num_chunks"])
     except Exception as e:
         logger.error("Storage upload failed — doc_id=%s, error=%s", row["doc_id"], e)
@@ -79,14 +86,16 @@ async def get_document_pdf(
         raise HTTPException(status_code=404, detail="Document not found")
 
     upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
-    for f in os.listdir(upload_dir):
-        if f.startswith(doc["doc_id"]):
-            pdf_path = os.path.join(upload_dir, f)
-            return FileResponse(
-                path=pdf_path,
-                media_type="application/pdf",
-                filename=doc["filename"],
-            )
+    
+    if os.path.exists(upload_dir):
+        for f in os.listdir(upload_dir):
+            if f.startswith(doc["doc_id"]):
+                pdf_path = os.path.join(upload_dir, f)
+                return FileResponse(
+                    path=pdf_path,
+                    media_type="application/pdf",
+                    filename=doc["filename"],
+                )
 
     raise HTTPException(status_code=404, detail="PDF file not found on disk")
 
