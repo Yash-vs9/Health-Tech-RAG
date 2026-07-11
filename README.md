@@ -11,48 +11,54 @@
 User Upload (PDF / DOCX / JPG / JPEG / PNG)
          |
          v
-    POST /chats/{id}/documents  -->  Document Loader  -->  Text Splitter (512/50)  -->  Qwen3-Embedding-8B (4096-dim)
-                                                                                            |
-                                                                                    +-------+-------+
-                                                                                    |               |
-                                                                              ChromaDB         BM25 Index
-                                                                              Vector Store     (Keyword)
-                                                                                    |               |
-                                                                                    +-------+-------+
-                                                                                            |
-                                                                                  Reciprocal Rank
-                                                                                    Fusion (RRF)
-                                                                                            |
-                                                                                            v
-                                                                                    Top 10 Fused Results
-                                                                                            |
-                                                                                    +-------+-------+
-                                                                                    |               |
-                                                                              CrossEncoder    Source
-                                                                              Reranker        Filter
-                                                                                    |               |
-                                                                                    +-------+-------+
-                                                                                            |
-                                                                                    LLM (NVIDIA NIM)
-                                                                                    nemotron-nano-9b-v2
-                                                                                            |
-                                                                                    +-------+-------+
-                                                                                    |               |
-                                                                              Input           Output
-                                                                              Guardrails      Guardrails
-                                                                                    |               |
-                                                                                    +-------+-------+
-                                                                                            |
-                                                                                    NeMo Guardrails
-                                                                                    (Injection/Jailbreak)
-                                                                                            |
-                                                                                            v
-                                                                                    Answer + Cited Sources
-                                                                                            |
-                                                                                    +-------+-------+
-                                                                                    |               |
-                                                                              React           PdfViewer
-                                                                              Frontend        (in-app)
+    POST /chats/{id}/documents
+         |
+         +---> PDF/DOCX ---> PyMuPDF / python-docx ---> Text Splitter (1024/50)
+         |
+         +---> Image -----> Vision LLM (chart extraction) ---> Qwen3-Embedding-8B (4096-dim)
+                             |
+                             +--> OCR fallback (if vision fails)
+                                                                                     |
+                                                                             +-------+-------+
+                                                                             |               |
+                                                                       ChromaDB         BM25 Index
+                                                                       Vector Store     (Keyword)
+                                                                             |               |
+                                                                             +-------+-------+
+                                                                                     |
+                                                                               Reciprocal Rank
+                                                                                 Fusion (RRF)
+                                                                                     |
+                                                                                     v
+                                                                             Top 10 Fused Results
+                                                                                     |
+                                                                             +-------+-------+
+                                                                             |               |
+                                                                       CrossEncoder    Source
+                                                                       Reranker        Filter
+                                                                             |               |
+                                                                             +-------+-------+
+
+
+User Question ---> Input Guardrails (regex) ---> NeMo Guardrails (LLM)
+                                                          |
+                                                          v
+                                                Hybrid Retrieval (ChromaDB + BM25 + RRF)
+                                                          |
+                                                          v
+                                                CrossEncoder Reranker + Source Filter
+                                                          |
+                                                          v
+                                                LLM (NVIDIA NIM) nemotron-nano-9b-v2
+                                                          |
+                                                          v
+                                                Output Guardrails (regex)
+                                                          |
+                                                          v
+                                                Answer + Cited Sources
+                                                          |
+                                                          v
+                                                React Frontend + PdfViewer
 ```
 
 ---
@@ -73,14 +79,14 @@ Health-Tech-RAG/
 │   ├── routes/
 │   │   ├── auth_routes.py       # POST /auth/signup, /login, /logout, /me
 │   │   ├── chat_routes.py       # CRUD for /chats
-│   │   ├── document_routes.py   # Upload/list/delete documents + PDF serving
+│   │   ├── document_routes.py   # Upload/list/delete documents + PDF/image serving
 │   │   └── message_routes.py    # Send message + get chat history
 │   └── services/
 │       ├── __init__.py
 │       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace / NVIDIA)
 │       ├── embeddings.py        # Qwen3-Embedding-8B (4096-dim) via HuggingFace API
 │       ├── vectorstore.py       # ChromaDB integration with embedding function
-│       ├── ingestion.py         # PDF + DOCX + Images → chunk → embed → store
+│       ├── ingestion.py         # PDF + DOCX + Images → Vision LLM/OCR → chunk → embed → store
 │       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF + CrossEncoder
 │       ├── query_engine.py      # RAG: retrieve → rerank → filter sources → LLM → answer
 │       ├── guardrails.py        # Input/Output guardrails + NeMo Guardrails integration
@@ -93,7 +99,7 @@ Health-Tech-RAG/
 │       └── upload_utils.py      # Filename sanitization, file size validation
 ├── config/
 │   ├── config.yml               # NeMo Guardrails config (NIM model settings)
-│   └── rails.co                 # NeMo Colang rules (mortgage domain enforcement)
+│   └── rails.co                 # NeMo Colang rules (mortgage domain + injection detection)
 ├── frontend/                    # React app (Vite + Tailwind + Framer Motion)
 │   ├── package.json
 │   ├── vite.config.js           # Proxy to backend:8000
@@ -102,20 +108,20 @@ Health-Tech-RAG/
 │       ├── main.jsx
 │       ├── App.jsx              # Routes: Home, Login, Signup, Dashboard
 │       ├── App.css              # Design system (glassmorphism, gradients, animations)
-│       ├── api.js               # API client (auth, chats, docs, messages, PDF URL)
+│       ├── api.js               # API client (auth, chats, docs, messages, PDF/image URL)
 │       ├── context/
 │       │   └── AuthContext.jsx   # Auth state (token, user)
 │       ├── pages/
 │       │   ├── Home.jsx         # Landing page with animated features
 │       │   ├── Login.jsx        # Login form with icons
 │       │   ├── Signup.jsx       # Signup form with icons
-│       │   └── Dashboard.jsx    # Main app (chats + chat view + PDF viewer)
+│       │   └── Dashboard.jsx    # Main app (chats + chat view + PDF/image viewer)
 │       └── components/
 │           ├── ChatList.jsx     # Sidebar with chat sessions
 │           ├── ChatView.jsx     # Chat messages + source citations
 │           ├── Chatbox.jsx      # Chat input box
-│           ├── FileUpload.jsx   # Drag-and-drop upload zone
-│           ├── PdfViewer.jsx    # In-app PDF viewer (react-pdf)
+│           ├── FileUpload.jsx   # Drag-and-drop upload zone (PDF, DOCX, JPG, PNG)
+│           ├── PdfViewer.jsx    # In-app viewer for PDFs and images (auth-aware)
 │           ├── Navbar.jsx       # Navigation bar
 │           ├── Sidebar.jsx      # Side panel
 │           ├── FeatureCard.jsx  # Feature cards (animated)
@@ -124,9 +130,10 @@ Health-Tech-RAG/
 │   └── schema.sql               # Supabase schema (profiles, sessions, documents, messages + RLS)
 ├── tests/
 │   ├── backend/
-│   │   └── test_retriever.py    # Chunk dedup tests
+│   │   ├── test_retriever.py    # Chunk dedup tests
+│   │   └── test_ocr_fallback.py # OCR fallback tests
 │   └── evaluation/
-│       ├── documents/           # Mortgage PDFs for evaluation
+│       ├── documents/           # Mortgage PDFs/images for evaluation
 │       ├── golden_datasets/     # Golden dataset JSONs (275 questions)
 │       ├── evaluate.py          # RAGAS evaluation script
 │       └── test_answer_relevancy.py  # Quick metric verification
@@ -166,6 +173,9 @@ LLM_PROVIDER=nvidia
 NVIDIA_API_KEY=your_nvidia_key
 # Or use load-balanced keys:
 # NVIDIA_API_KEYS=key1,key2,key3
+
+# Vision model for chart/image understanding
+VISION_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
 
 # Embeddings (required)
 HUGGINGFACEHUB_API_TOKEN=your_hf_token
@@ -245,7 +255,7 @@ Open **http://localhost:3000**
 |------|-----------|--------|
 | PDF | `.pdf` | PyMuPDF + OCR fallback |
 | Word | `.docx` | python-docx |
-| Image | `.jpg`, `.jpeg`, `.png` | Tesseract OCR + Vision LLM (for charts/graphs) |
+| Image | `.jpg`, `.jpeg`, `.png` | Vision LLM (chart extraction) + OCR fallback |
 
 ### Vision Model (Chart Understanding)
 
@@ -253,7 +263,31 @@ Open **http://localhost:3000**
 |----------|---------|-------------|
 | `VISION_MODEL` | `nvidia/llama-3.1-nemotron-nano-vl-8b-v1` | NVIDIA NIM vision model for chart/graph extraction |
 
-When an image has low OCR text (<50 chars), the system automatically uses a vision LLM to extract chart data including chart type, axes, data points, and summary.
+**How it works:**
+1. All images are sent to the vision LLM first
+2. Vision model extracts: chart type, title, axes, data points, summary
+3. If vision model fails, OCR is used as fallback
+4. Extracted data is embedded and indexed for RAG retrieval
+
+**Example vision model output:**
+```
+CHART TYPE: Bar chart
+
+TITLE: ABC Bank Annual Revenue 2020-2024
+
+AXES:
+- X-axis: Years (2020, 2021, 2022, 2023, 2024)
+- Y-axis: Revenue in millions USD
+
+DATA:
+- 2020: $12.5M
+- 2021: $15.2M
+- 2022: $18.7M
+- 2023: $22.1M
+- 2024: $25.8M
+
+SUMMARY: ABC Bank shows consistent revenue growth from $12.5M in 2020 to $25.8M in 2024, with an average annual growth rate of approximately 20%.
+```
 
 ### Logging
 
@@ -277,6 +311,7 @@ logs.bat dir       # open log folder in explorer
 | `MULTI_QUERY_ENABLED` | `true` | Generate N reformulated queries for better recall |
 | `MULTI_QUERY_N` | `3` | Number of reformulated queries per question |
 | `RETRIEVER_TOP_K` | `10` | Number of chunks retrieved and sent to LLM |
+| `RERANK_ENABLED` | `true` | Cross-encoder reranking after RRF fusion |
 
 ### Guardrails
 
@@ -287,6 +322,19 @@ logs.bat dir       # open log folder in explorer
 | `NEMO_GUARDRAILS_ENABLED` | `true` | NeMo input safety (injection, jailbreak via LLM) |
 | `MAX_UPLOAD_BYTES` | `26214400` | Max upload size (25MB default) |
 | `ALLOW_RESET_COLLECTION` | `false` | Require auth + env flag for `/reset-collection` |
+
+### NeMo Guardrails
+
+NeMo Guardrails provides LLM-based input safety for detecting injection and jailbreak attempts.
+
+**Config files:**
+- `config/config.yml` — NeMo configuration (NIM model, rails path)
+- `config/rails.co` — Colang rules with 70+ mortgage domain examples
+
+**How it works:**
+1. User message is checked against injection/jailbreak patterns
+2. If detected, request is blocked before reaching the LLM
+3. mortgage domain examples improve accuracy for financial queries
 
 ---
 
@@ -317,7 +365,7 @@ logs.bat dir       # open log folder in explorer
 | `/chats/{id}/documents` | GET | List documents in chat |
 | `/chats/{id}/documents` | POST | Upload PDF/DOCX/Image → ingest → store |
 | `/chats/{id}/documents/{doc_id}` | DELETE | Delete document (ChromaDB + Storage) |
-| `/chats/{id}/documents/{doc_id}/pdf` | GET | Serve PDF for in-app viewer |
+| `/chats/{id}/documents/{doc_id}/pdf` | GET | Serve PDF or image for in-app viewer |
 
 ### Messages
 
@@ -339,16 +387,19 @@ logs.bat dir       # open log folder in explorer
 
 ## Frontend Features
 
-- **Auth** — Login/Signup with email
+- **Auth** — Login/Signup with email + Google OAuth
 - **Dashboard** — Chat list sidebar + chat view
 - **File Upload** — drag-and-drop zone, accepts PDF, DOCX, JPG, JPEG, PNG
 - **Chat Interface** — ask questions about uploaded mortgage documents
-- **Source Citations** — only sources cited by the LLM are shown
+- **Source Citations** — only sources cited by the LLM are shown (sorted by relevance)
 - **PdfViewer** — in-app PDF viewer with page navigation and zoom
-- **Source-to-PDF Link** — click a source to open the PDF at that page
+- **Image Viewer** — view uploaded images with auth-aware blob loading
+- **Source-to-PDF Link** — click a source to open the PDF/image at that location
 - **Chat History** — persistent messages across sessions
 - **Auto-scroll** — chat scrolls to latest message
 - **Animations** — framer-motion entry animations, hover effects, glassmorphism
+
+---
 
 ## Security Features
 
@@ -359,6 +410,9 @@ logs.bat dir       # open log folder in explorer
 - **NeMo Guardrails** — LLM-based injection/jailbreak detection
 - **Auth Required** — reset collection requires authentication + env flag
 - **No Local Storage** — files processed via tempfile, deleted after ingestion
+- **CORS Protection** — configured for frontend origin only
+
+---
 
 ## Use Cases
 
@@ -366,6 +420,7 @@ logs.bat dir       # open log folder in explorer
 - **Compliance Teams** — verify RESPA disclosures, check regulatory adherence
 - **Cross-Document Comparison** — compare terms across multiple loan agreements
 - **Summarization** — get concise summaries of lengthy appraisal reports
+- **Chart Analysis** — extract and query data from financial charts and graphs
 
 ---
 
@@ -374,7 +429,7 @@ logs.bat dir       # open log folder in explorer
 **Structure:**
 ```
 tests/evaluation/
-├── documents/        ← Upload mortgage PDFs/DOCXs here
+├── documents/        ← Upload mortgage PDFs/images here
 ├── golden_datasets/  ← Golden dataset JSONs (275 questions)
 └── evaluate.py       ← Evaluation script
 ```
