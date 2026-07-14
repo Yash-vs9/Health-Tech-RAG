@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from backend.models.schemas import SendMessageRequest, MessageResponse, ChatHistoryResponse
+from backend.models.schemas import SendMessageRequest, MessageResponse, ChatHistoryResponse, FeedbackRequest
 from backend.services import auth_service, message_service, session_service, document_service, query_engine
 from backend.logging_config import get_logger
 
@@ -64,3 +64,20 @@ async def get_history(chat_session_id: str, user: dict = Depends(auth_service.ge
         "messages": messages,
         "documents": documents,
     }
+
+
+@router.patch("/{message_id}/feedback")
+async def set_message_feedback(
+    chat_session_id: str,
+    message_id: str,
+    req: FeedbackRequest,
+    user: dict = Depends(auth_service.get_current_user),
+):
+    try:
+        updated = message_service.update_message_feedback(
+            user["id"], chat_session_id, message_id, req.feedback,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return updated

@@ -69,6 +69,8 @@ export const api = {
     request('POST', `/chats/${chatId}/messages`, { chat_session_id: chatId, question }, token),
   getHistory: (token, chatId) =>
     request('GET', `/chats/${chatId}/messages`, null, token),
+  setFeedback: (token, chatId, messageId, feedback) =>
+    request('PATCH', `/chats/${chatId}/messages/${messageId}/feedback`, { feedback }, token),
 
   // Legacy (no auth)
   ingest: (file) => {

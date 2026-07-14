@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './FileUpload';
-import { Send, ChevronDown, ChevronRight, Bot, User, Sparkles, ExternalLink } from 'lucide-react';
+import { Send, ChevronDown, ChevronRight, Bot, User, Sparkles, ExternalLink, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 
-export default function ChatView({ chat, messages, docs, onSend, onUpload, onDeleteDoc, onRename, loading, onSourceClick }) {
+export default function ChatView({ chat, messages, docs, onSend, onUpload, onDeleteDoc, onRename, loading, onSourceClick, onFeedback }) {
   const [input, setInput] = useState('');
   const [docsExpanded, setDocsExpanded] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
   const messagesEnd = useRef(null);
   const titleRef = useRef(null);
 
@@ -74,6 +75,21 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
   const handleTitleKeyDown = (e) => {
     if (e.key === 'Enter') commitRename();
     else if (e.key === 'Escape') setEditingTitle(false);
+  };
+
+  const handleCopy = async (text, id) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+
+  const handleFeedback = (msg, type) => {
+    const newValue = msg.feedback === type ? null : type;
+    onFeedback && onFeedback(msg, newValue);
   };
 
   const hasProcessing = docs.some(d => d.status === 'processing');
@@ -152,7 +168,7 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
         <AnimatePresence>
           {messages.map((msg, i) => (
             <motion.div
-              key={i}
+              key={msg.id || i}
               className={`message ${msg.role}`}
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -196,6 +212,31 @@ export default function ChatView({ chat, messages, docs, onSend, onUpload, onDel
                       </div>
                     ))}
                   </details>
+                </div>
+              )}
+              {msg.role === 'assistant' && (
+                <div className="message-actions">
+                  <button
+                    className="msg-action-btn"
+                    onClick={() => handleCopy(msg.content, msg.id || i)}
+                    title="Copy response"
+                  >
+                    {copiedId === (msg.id || i) ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                  <button
+                    className={`msg-action-btn ${msg.feedback === 'up' ? 'active-up' : ''}`}
+                    onClick={() => handleFeedback(msg, 'up')}
+                    title="Good response"
+                  >
+                    <ThumbsUp size={14} />
+                  </button>
+                  <button
+                    className={`msg-action-btn ${msg.feedback === 'down' ? 'active-down' : ''}`}
+                    onClick={() => handleFeedback(msg, 'down')}
+                    title="Bad response"
+                  >
+                    <ThumbsDown size={14} />
+                  </button>
                 </div>
               )}
             </motion.div>
