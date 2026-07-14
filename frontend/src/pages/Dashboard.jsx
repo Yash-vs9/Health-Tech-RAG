@@ -141,6 +141,7 @@ export default function Dashboard() {
     try {
       const response = await api.sendMessage(token, activeChat.id, question);
       const assistantMsg = {
+        id: response.id,
         role: "assistant",
         content: response.answer || response.content,
         sources: response.sources || [],
@@ -192,6 +193,25 @@ export default function Dashboard() {
   const handleClosePdf = useCallback(() => {
     setPdfViewer(null);
   }, []);
+
+  const handleFeedback = useCallback(async (msg, feedbackValue) => {
+    if (!activeChat || !msg.id) return;
+
+    // Optimistic update
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, feedback: feedbackValue } : m))
+    );
+
+    try {
+      await api.setFeedback(token, activeChat.id, msg.id, feedbackValue);
+    } catch (err) {
+      console.error("Failed to save feedback:", err);
+      // Revert on failure
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, feedback: msg.feedback } : m))
+      );
+    }
+  }, [activeChat, token]);
 
   if (!token) return null;
 
@@ -251,6 +271,7 @@ export default function Dashboard() {
           onRename={handleRenameChat}
           loading={loading}
           onSourceClick={handleSourceClick}
+          onFeedback={handleFeedback}
         />
         <AnimatePresence>
           {pdfViewer && (

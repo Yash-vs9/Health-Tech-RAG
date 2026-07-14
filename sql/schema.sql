@@ -147,3 +147,16 @@ create policy "storage_insert_own"
 create policy "storage_delete_own"
     on storage.objects for delete
     using (bucket_id = 'documents' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- 8. MESSAGE FEEDBACK
+alter table public.messages
+    add column if not exists feedback text check (feedback in ('up', 'down') or feedback is null);
+
+create policy "messages_update_own" on public.messages
+    for update using (
+        exists (
+            select 1 from public.chat_sessions cs
+            where cs.id = messages.chat_session_id
+            and cs.user_id = auth.uid()
+        )
+    );

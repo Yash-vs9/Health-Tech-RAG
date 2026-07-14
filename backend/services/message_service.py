@@ -54,3 +54,40 @@ def build_conversation_context(messages: list[dict], max_turns: int = 5) -> str:
         prefix = "User" if m["role"] == "user" else "Assistant"
         lines.append(f"{prefix}: {m['content']}")
     return "\n".join(lines)
+
+def update_message_feedback(
+    user_id: str,
+    chat_session_id: str,
+    message_id: str,
+    feedback: str | None,
+) -> dict:
+    """
+    feedback must be 'up', 'down', or None (to clear it).
+    Verifies the chat session belongs to the user before updating.
+    """
+    if feedback not in ("up", "down", None):
+        raise ValueError("feedback must be 'up', 'down', or null")
+
+    client = get_admin_client()
+
+    session_check = client.table("chat_sessions") \
+        .select("id") \
+        .eq("id", chat_session_id) \
+        .eq("user_id", user_id) \
+        .maybe_single() \
+        .execute()
+
+    if not session_check or not session_check.data:
+        raise ValueError("Chat session not found or not owned by user")
+
+    result = client.table("messages") \
+        .update({"feedback": feedback}) \
+        .eq("id", message_id) \
+        .eq("chat_session_id", chat_session_id) \
+        .execute()
+
+    if not result.data:
+        raise ValueError("Message not found")
+
+    logger.debug("Feedback updated — message=%s, feedback=%s", message_id, feedback)
+    return result.data[0]

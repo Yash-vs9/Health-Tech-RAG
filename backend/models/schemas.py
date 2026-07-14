@@ -93,3 +93,6 @@ class ChatHistoryResponse(BaseModel):
     title: str
     messages: list[MessageResponse]
     documents: list[DocumentResponse]
+
+class FeedbackRequest(BaseModel):
+    feedback: str | None = None  # 'up', 'down', or null to clear
