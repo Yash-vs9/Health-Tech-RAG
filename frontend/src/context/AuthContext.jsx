@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../api';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api, setOnUnauthorized } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +10,21 @@ export function AuthProvider({ children }) {
     return stored ? JSON.parse(stored) : null;
   });
   const [loading, setLoading] = useState(false);
+
+  const logout = useCallback(() => {
+    if (token) {
+      api.logout(token).catch(() => {});
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+  }, [token]);
+
+  useEffect(() => {
+    setOnUnauthorized(logout);
+    return () => setOnUnauthorized(null);
+  }, [logout]);
 
   useEffect(() => {
     if (token && !user) {
@@ -46,16 +61,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(userData));
     }
     return data;
-  };
-
-  const logout = () => {
-    if (token) {
-      api.logout(token).catch(() => {});
-    }
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
   };
 
   return (

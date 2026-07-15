@@ -1,5 +1,15 @@
 const API_BASE = '';
 
+let onUnauthorized = null;
+
+export function setOnUnauthorized(callback) {
+  onUnauthorized = callback;
+}
+
+function handle401() {
+  if (onUnauthorized) onUnauthorized();
+}
+
 async function request(method, path, body = null, token = null) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -8,6 +18,10 @@ async function request(method, path, body = null, token = null) {
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(`${API_BASE}${path}`, opts);
+  if (res.status === 401) {
+    handle401();
+    throw new Error('Session expired');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     let errorMsg = 'Request failed';
@@ -30,6 +44,10 @@ async function uploadFile(path, file, token) {
     headers: { 'Authorization': `Bearer ${token}` },
     body: formData,
   });
+  if (res.status === 401) {
+    handle401();
+    throw new Error('Session expired');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Upload failed');
