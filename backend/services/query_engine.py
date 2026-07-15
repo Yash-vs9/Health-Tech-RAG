@@ -8,7 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from backend.logging_config import get_logger
 from .llm import get_llm
 from .retriever import hybrid_retrieve
-from .guardrails import get_input_guardrails, get_output_guardrails
+from .guardrails import get_input_guardrails, get_output_guardrails, get_nemo_guardrails
 
 logger = get_logger("backend.query_engine")
 
@@ -67,7 +67,7 @@ Question: {question}
 Answer:"""
 
 
-def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
+async def query_rag(question: str, doc_ids: list[str] | None = None, conversation_context: str = "") -> dict:
     # ── Input guardrails ────────────────────────────────────────────────
     input_guard = get_input_guardrails()
     guard_result = input_guard.check(question)
@@ -78,6 +78,17 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
         )
         return {
             "answer": guard_result.reason,
+            "sources": [],
+            "blocked": True,
+        }
+
+    # ── NeMo input safety check (injection/jailbreak) ─────────────────
+    nemo = get_nemo_guardrails()
+    nemo_blocked = await nemo.check_input(question)
+    if nemo_blocked is not None:
+        logger.warning("Input blocked by NeMo Guardrails")
+        return {
+            "answer": nemo_blocked,
             "sources": [],
             "blocked": True,
         }
@@ -205,7 +216,47 @@ def query_rag(question: str, doc_ids: list[str] | None = None, conversation_cont
         len(answer), llm_elapsed,
     )
 
+    # ── Filter sources to only those cited in the answer ─────────────
+    cited_indices = set()
+
+    # 1. Match "Source N" pattern
+    for match in re.finditer(r"Source\s+(\d+)", answer, re.IGNORECASE):
+        idx = int(match.group(1)) - 1
+        if 0 <= idx < len(sources):
+            cited_indices.add(idx)
+
+    # 2. Match filenames mentioned in the answer (e.g., "ABC_Bank_Annual_Report_2024_Full.pdf")
+    answer_lower = answer.lower()
+    for i, s in enumerate(sources):
+        meta = s.get("metadata", {})
+        filename = meta.get("filename", "")
+        if filename and filename.lower() in answer_lower:
+            cited_indices.add(i)
+
+    # 3. Match page numbers mentioned near document references
+    for match in re.finditer(r"[Pp]age\s+(\d+)", answer):
+        page_num = int(match.group(1))
+        for i, s in enumerate(sources):
+            meta = s.get("metadata", {})
+            src_page = meta.get("page_number", meta.get("page"))
+            if src_page is not None:
+                try:
+                    if int(src_page) == page_num:
+                        cited_indices.add(i)
+                except (ValueError, TypeError):
+                    pass
+
+    if cited_indices:
+        filtered_sources = [s for i, s in enumerate(sources) if i in cited_indices]
+        # Sort by reranker score (highest first)
+        filtered_sources.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
+        logger.info("Filtered sources — cited=%d, total=%d", len(filtered_sources), len(sources))
+    else:
+        # No citations found — return top 3 by reranker score
+        filtered_sources = sorted(sources, key=lambda x: x.get("rrf_score", 0), reverse=True)[:3]
+        logger.info("No citations found — returning top 3 by score")
+
     return {
         "answer": answer,
-        "sources": sources,
+        "sources": filtered_sources,
     }

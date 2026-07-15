@@ -21,7 +21,7 @@ from backend.routes import auth_routes, chat_routes, document_routes, message_ro
 setup_logging()
 logger = get_logger("backend.main")
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
 
 app = FastAPI(
     title="Mortgage RAG API",
@@ -54,7 +54,7 @@ async def health_check():
             version="1.0.0",
             chromadb=f"connected ({count} chunks)",
             llm=llm_provider,
-            embeddings=embed_provider,
+            embeddings="Qwen3-Embedding-8B",
         )
     except Exception as e:
         logger.error("Health check failed: %s", e)
@@ -73,7 +73,7 @@ async def ingest(file: UploadFile = File(...)):
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         logger.warning("Ingest rejected — unsupported file type: %s", ext)
-        raise HTTPException(status_code=400, detail=f"Only PDF and DOCX files are accepted. Got: {ext}")
+        raise HTTPException(status_code=400, detail=f"Only PDF, DOCX, JPG, JPEG and PNG files are accepted. Got: {ext}")
 
     if get_upload_file_size(file) > get_max_upload_bytes():
         raise HTTPException(status_code=413, detail="Uploaded file is too large")
@@ -107,7 +107,7 @@ async def query(request: QueryRequest):
     logger.info("Query request — q=%s, doc_ids=%s", request.question[:80], request.doc_ids)
     start = time.time()
     try:
-        result = query_engine.query_rag(
+        result = await query_engine.query_rag(
             question=request.question,
             doc_ids=request.doc_ids if request.doc_ids else None,
         )

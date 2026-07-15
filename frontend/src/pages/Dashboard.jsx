@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import ChatList from "../components/ChatList";
 import ChatView from "../components/ChatView";
+import PdfViewer from "../components/PdfViewer";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
   const { token, user, logout } = useAuth();
@@ -16,6 +18,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pdfViewer, setPdfViewer] = useState(null);
   const pollingRef = useRef(null);
 
   useEffect(() => {
@@ -26,7 +29,6 @@ export default function Dashboard() {
     loadChats();
   }, [token]);
 
-  // Poll for document status updates every 5s while any doc is "processing"
   useEffect(() => {
     if (!activeChat) return;
 
@@ -37,14 +39,12 @@ export default function Dashboard() {
         try {
           const freshDocs = await api.listDocs(token, activeChat.id);
           setDocs((prev) => {
-            // Merge: keep in-progress uploads that aren't in freshDocs yet
             const freshMap = new Map(freshDocs.map(d => [d.id, d]));
             const merged = prev.map(d => {
               const updated = freshMap.get(d.id);
               if (updated) { freshMap.delete(d.id); return updated; }
               return d;
             });
-            // Add any docs from server we didn't have
             for (const d of freshMap.values()) merged.push(d);
             return merged;
           });
@@ -141,6 +141,7 @@ export default function Dashboard() {
     try {
       const response = await api.sendMessage(token, activeChat.id, question);
       const assistantMsg = {
+        id: response.id,
         role: "assistant",
         content: response.answer || response.content,
         sources: response.sources || [],
@@ -183,24 +184,69 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  const handleSourceClick = useCallback((docId, filename, pageNumber) => {
+    if (!activeChat || !docId) return;
+    const url = api.getDocPdfUrl(token, activeChat.id, docId);
+    setPdfViewer({ url, filename, pageNumber: pageNumber || 1, token });
+  }, [activeChat, token]);
+
+  const handleClosePdf = useCallback(() => {
+    setPdfViewer(null);
+  }, []);
+
+  const handleFeedback = useCallback(async (msg, feedbackValue) => {
+    if (!activeChat || !msg.id) return;
+
+    // Optimistic update
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, feedback: feedbackValue } : m))
+    );
+
+    try {
+      await api.setFeedback(token, activeChat.id, msg.id, feedbackValue);
+    } catch (err) {
+      console.error("Failed to save feedback:", err);
+      // Revert on failure
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, feedback: msg.feedback } : m))
+      );
+    }
+  }, [activeChat, token]);
+
   if (!token) return null;
 
   return (
     <div className="dashboard">
-      <div className={`chat-list-panel ${sidebarOpen ? 'open' : 'closed'}`}>
-        <ChatList
-          chats={chats}
-          activeChat={activeChat}
-          onSelect={handleSelectChat}
-          onNew={handleNewChat}
-          onDelete={handleDeleteChat}
-          onRename={handleRenameChat}
-          user={user}
-          onLogout={handleLogout}
-        />
-      </div>
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.div
+            className="chat-list-panel open"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 300, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <ChatList
+              chats={chats}
+              activeChat={activeChat}
+              onSelect={handleSelectChat}
+              onNew={handleNewChat}
+              onDelete={handleDeleteChat}
+              onRename={handleRenameChat}
+              user={user}
+              onLogout={handleLogout}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="main-area">
-        <div className="sidebar-edge-toggle" onClick={() => setSidebarOpen((v) => !v)} title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}>
+        <motion.div
+          className="sidebar-edge-toggle"
+          onClick={() => setSidebarOpen((v) => !v)}
+          title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             {sidebarOpen ? (
               <>
@@ -214,7 +260,7 @@ export default function Dashboard() {
               </>
             )}
           </svg>
-        </div>
+        </motion.div>
         <ChatView
           chat={activeChat}
           messages={messages}
@@ -224,7 +270,20 @@ export default function Dashboard() {
           onDeleteDoc={handleDeleteDoc}
           onRename={handleRenameChat}
           loading={loading}
+          onSourceClick={handleSourceClick}
+          onFeedback={handleFeedback}
         />
+        <AnimatePresence>
+          {pdfViewer && (
+            <PdfViewer
+              pdfUrl={pdfViewer.url}
+              pageNumber={pdfViewer.pageNumber}
+              filename={pdfViewer.filename}
+              token={pdfViewer.token}
+              onClose={handleClosePdf}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,35 +1,32 @@
+import { motion } from "framer-motion";
+import { Upload, MessageSquare, Search, Shield } from "lucide-react";
+
 const icons = {
-  upload: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  ),
-  chat: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  ),
-  search: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  ),
-  shield: (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
+  upload: <Upload size={28} />,
+  chat: <MessageSquare size={28} />,
+  search: <Search size={28} />,
+  shield: <Shield size={28} />,
 };
 
-export default function FeatureCard({ icon, title, description }) {
+export default function FeatureCard({ icon, title, description, index }) {
   return (
-    <div className="feature-card">
+    <motion.div
+      className="feature-card"
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, delay: index * 0.1, ease: "easeOut" }}
+      whileHover={{
+        rotateX: 3,
+        rotateY: -2,
+        scale: 1.02,
+        transition: { duration: 0.3 }
+      }}
+      style={{ transformStyle: "preserve-3d" }}
+    >
       <div className="feature-icon">{icons[icon]}</div>
       <h3>{title}</h3>
       <p>{description}</p>
-    </div>
+    </motion.div>
   );
 }

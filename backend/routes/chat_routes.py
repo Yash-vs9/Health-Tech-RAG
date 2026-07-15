@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import os
-import logging
 from fastapi import APIRouter, Depends, HTTPException
 from backend.models.schemas import (
     CreateChatSessionRequest, ChatSessionResponse, RenameChatSessionRequest,
 )
 from backend.services import auth_service, session_service
-from backend.services.upload_utils import safe_filename
+from backend.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("backend.routes.chat")
 
 router = APIRouter(prefix="/chats", tags=["chat-sessions"])
 
@@ -61,15 +59,6 @@ async def delete_chat(chat_session_id: str, user: dict = Depends(auth_service.ge
                     get_admin_client().storage.from_(document_service.BUCKET).remove([doc["storage_path"]])
             except Exception as e:
                 logger.warning("Storage cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
-
-            # Delete local PDF file
-            local_path = os.path.join("data", "uploaded_pdfs", f"{doc['doc_id']}_{safe_filename(doc['filename'])}")
-            try:
-                if os.path.exists(local_path):
-                    os.remove(local_path)
-                    logger.info("Deleted local PDF — path=%s", local_path)
-            except Exception as e:
-                logger.warning("Local file cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
 
             # Mark document as deleted in DB
             try:

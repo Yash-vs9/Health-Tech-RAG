@@ -1,0 +1,142 @@
+define user express greeting
+  "hi"
+  "hello"
+  "hey"
+
+define bot express greeting
+  "Hello! I am your mortgage assistant. How can I help you today?"
+
+define flow greeting
+  user express greeting
+  bot express greeting
+
+define user ask mortgage question
+  "What is the interest rate?"
+  "What are the loan terms?"
+  "What is the processing fee?"
+  "What is the late fee?"
+  "What is the prepayment penalty?"
+  "What is the EMI?"
+  "How much can I borrow?"
+  "What is the loan tenure?"
+  "What documents are required?"
+  "What is the eligibility criteria?"
+  "What is the cost-to-income ratio?"
+  "What is the debt-to-income ratio?"
+  "What is the LTV ratio?"
+  "What is the down payment?"
+  "What are the closing costs?"
+  "What is the mortgage insurance?"
+  "What is the amortization schedule?"
+  "What is the fixed rate?"
+  "What is the adjustable rate?"
+  "What is the refinancing option?"
+  "What is the balance transfer?"
+  "What is the top-up loan?"
+  "What is the loan-to-value ratio?"
+  "What is the foreclosure?"
+  "What is the NPA?"
+  "What is the CIBIL score?"
+  "What is the credit score requirement?"
+  "What is the income proof required?"
+  "What is the property valuation?"
+  "What is the stamp duty?"
+  "What is the registration fee?"
+  "What is the disbursement?"
+  "What is the moratorium period?"
+  "What is the reset period?"
+  "What is the base rate?"
+  "What is the MCLR?"
+  "What is the EBLR?"
+  "What is the repo rate impact?"
+  "What is the EMI breakdown?"
+  "What is the principal amount?"
+  "What is the interest component?"
+  "What is the total interest payable?"
+  "What is the loan amount?"
+  "What is the property type requirements?"
+  "What is the PMAY scheme?"
+  "What is the home loan tax benefit?"
+  "What is the Section 24 benefit?"
+  "What is the Section 80C benefit?"
+  "What is the home loan insurance?"
+  "What is the loan restructuring?"
+  "What is the loan settlement?"
+  "What is the SARFAESI Act?"
+  "What is the capital gains tax?"
+  "What is the property tax?"
+  "What is the society maintenance?"
+  "How does the interest rate change?"
+  "What is the rate forecast?"
+  "What is the rate outlook?"
+  "What is the rate prediction?"
+  "What is the rate environment?"
+  "What is the rate cycle?"
+  "What is the rate movement?"
+  "What is the rate direction?"
+  "What is the rate change impact?"
+  "What is the rate hike impact?"
+  "What is the rate cut impact?"
+
+define bot answer mortgage question
+  "I can help you with that mortgage question. Based on the documents provided, I'll find the relevant information for you."
+
+define flow handle_mortgage_question
+  user ask mortgage question
+  bot answer mortgage question
+
+define user ask non mortgage
+  "Who won the IPL?"
+  "Tell me a joke"
+  "Write Python code"
+  "How do I hack WiFi?"
+  "What is the weather?"
+  "Who is the president?"
+  "What is the capital of France?"
+  "How do I cook pasta?"
+  "What is the best movie?"
+  "Who sings this song?"
+  "What is 2+2?"
+  "Tell me a riddle"
+  "What is the meaning of life?"
+  "How do I learn Python?"
+  "What is machine learning?"
+  "Who invented the internet?"
+  "What is blockchain?"
+  "How does Bitcoin work?"
+  "What is NFT?"
+  "Who is Elon Musk?"
+
+define bot refuse non mortgage
+  "I'm designed to answer mortgage and home loan related questions only. Please ask me about loans, interest rates, EMIs, eligibility, or other mortgage topics."
+
+define flow refuse_non_mortgage
+  user ask non mortgage
+  bot refuse non mortgage
+
+define user ask dangerous
+  "How do I commit fraud?"
+  "How to money launder?"
+  "How to forge documents?"
+  "How to hack a bank?"
+  "How to steal identity?"
+
+define bot refuse dangerous
+  "I cannot assist with illegal or fraudulent activities. Please consult a qualified professional for legitimate financial advice."
+
+define flow dangerous_flow
+  user ask dangerous
+  bot refuse dangerous
+
+define user ask diagnosis
+  "Do I have cancer?"
+  "Do I have diabetes?"
+  "Can you diagnose me?"
+  "What is my health condition?"
+
+define bot diagnosis_response
+  "I cannot diagnose medical conditions. I am a mortgage assistant. Please consult a healthcare professional."
+
+define flow diagnosis_flow
+  user ask diagnosis
+  bot diagnosis_response

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from dataclasses import dataclass
 from backend.logging_config import get_logger
 
@@ -243,3 +244,89 @@ def get_output_guardrails() -> OutputGuardrails:
         _output_guardrails = OutputGuardrails(enabled=enabled)
         logger.info("Output guardrails initialized — enabled=%s", enabled)
     return _output_guardrails
+
+
+# ── NeMo Guardrails ─────────────────────────────────────────────────────
+
+
+class NemoGuardrails:
+    """
+    NeMo Guardrails wrapper for domain restriction and safety.
+
+    Uses NVIDIA NIM + rails.co config to enforce:
+    - Mortgage/finance domain only
+    - Refusal for non-domain queries
+    - Safety checks (fraud, illegal activity)
+    """
+
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+        self._rails = None
+        if enabled:
+            try:
+                # NeMo needs a single NVIDIA_API_KEY — extract one from load-balanced keys
+                api_key = os.getenv("NVIDIA_API_KEY")
+                if not api_key:
+                    keys_raw = os.getenv("NVIDIA_API_KEYS", "")
+                    keys = [k.strip() for k in keys_raw.split(",") if k.strip()]
+                    if keys:
+                        api_key = keys[0]
+                        os.environ["NVIDIA_API_KEY"] = api_key
+
+                from nemoguardrails import LLMRails, RailsConfig
+                config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config")
+                config = RailsConfig.from_path(config_path)
+                self._rails = LLMRails(config)
+                logger.info("NeMo Guardrails initialized — config=%s", config_path)
+            except Exception as e:
+                logger.warning("NeMo Guardrails init failed — falling back to regex: %s", e)
+                self._rails = None
+
+    async def check_input(self, user_input: str) -> str | None:
+        """
+        Check user input for safety issues (injection, jailbreak).
+        Returns blocked message or None if safe.
+        """
+        if not self.enabled or self._rails is None:
+            return None
+
+        try:
+            messages = [{"role": "user", "content": user_input}]
+
+            start = time.time()
+            response = await self._rails.generate_async(messages=messages)
+            elapsed = time.time() - start
+            logger.info("NeMo Guardrails input check — elapsed=%.2fs", elapsed)
+
+            if isinstance(response, dict):
+                response_text = response.get("content", str(response))
+            else:
+                response_text = str(response)
+
+            # If NeMo refused the question, return the refusal
+            refusal_keywords = [
+                "i'm designed to answer",
+                "i cannot assist",
+                "i cannot help",
+                "not able to assist",
+                "mortgage and home loan related questions only",
+            ]
+            if any(kw in response_text.lower() for kw in refusal_keywords):
+                logger.info("NeMo Guardrails blocked input — question rejected as non-mortgage")
+                return response_text
+
+            return None
+        except Exception as e:
+            logger.warning("NeMo Guardrails input check failed — %s", e)
+            return None
+
+
+_nemo_guardrails: NemoGuardrails | None = None
+
+
+def get_nemo_guardrails() -> NemoGuardrails:
+    global _nemo_guardrails
+    if _nemo_guardrails is None:
+        enabled = os.getenv("NEMO_GUARDRAILS_ENABLED", "true").lower() == "true"
+        _nemo_guardrails = NemoGuardrails(enabled=enabled)
+    return _nemo_guardrails

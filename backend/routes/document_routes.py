@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from backend.models.schemas import DocumentResponse
 from backend.services import auth_service, document_service, session_service, ingestion
 from backend.services import vectorstore
 from backend.services.upload_utils import get_max_upload_bytes, get_upload_file_size, safe_filename
+from backend.db.supabase_client import get_admin_client
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.routes.documents")
 
 router = APIRouter(prefix="/chats/{chat_session_id}/documents", tags=["documents"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".jpg", ".jpeg", ".png"}
 
 
 @router.post("", response_model=DocumentResponse)
@@ -95,14 +97,38 @@ async def delete_document(chat_session_id: str, document_id: str, user: dict = D
     except Exception as e:
         logger.warning("ChromaDB cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
 
-    # Remove local PDF from uploaded_pdfs/
-    try:
-        upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
-        for f in os.listdir(upload_dir):
-            if f.startswith(row["doc_id"]):
-                os.remove(os.path.join(upload_dir, f))
-                logger.info("Local file deleted — %s", f)
-    except Exception as e:
-        logger.warning("Local file cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
-
     return {"status": "deleted", "doc_id": row["doc_id"]}
+
+
+@router.get("/{document_id}/pdf")
+async def get_document_pdf(chat_session_id: str, document_id: str, user: dict = Depends(auth_service.get_current_user)):
+    try:
+        row = document_service.get_document(user["id"], document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    storage_path = row.get("storage_path")
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="Document not available in storage")
+
+    # Detect media type from filename
+    filename = row.get("filename", "")
+    ext = os.path.splitext(filename)[1].lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+
+    try:
+        client = get_admin_client()
+        file_bytes = client.storage.from_(document_service.BUCKET).download(storage_path)
+        return Response(content=file_bytes, media_type=media_type)
+    except Exception as e:
+        logger.error("Document download failed — doc_id=%s, error=%s", row["doc_id"], e)
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {e}")

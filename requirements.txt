@@ -43,3 +43,10 @@ nltk>=3.9.0
 # RAG Evaluation
 ragas>=0.2.0
 datasets>=2.20.0
+
+# OCR
+pytesseract
+Pillow
+
+# Guardrails
+nemoguardrails

@@ -1,4 +1,7 @@
 import os
+import io
+import base64
+import hashlib
 import uuid
 import time
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -6,9 +9,283 @@ from langchain_core.documents import Document
 from backend.logging_config import get_logger
 from .embeddings import get_embeddings
 from . import vectorstore
+from .ocr_fallback import apply_ocr_fallback
+from PIL import Image
+import pytesseract
+from backend.services.retriever import refresh_bm25
 from .upload_utils import safe_filename
 
 logger = get_logger("backend.ingestion")
+
+
+# Vision extraction via Vision LLM
+
+
+def _get_vision_provider_and_key() -> tuple[str | None, str | None]:
+    """Detect if the vision provider is gemini or nvidia and retrieve the key."""
+    provider = os.getenv("VISION_PROVIDER", os.getenv("LLM_PROVIDER", "")).lower()
+
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    nvidia_keys = os.getenv("NVIDIA_API_KEYS", os.getenv("NVIDIA_API_KEY", ""))
+
+    if provider == "gemini":
+        if google_key:
+            return "gemini", google_key
+        return None, None
+
+    if provider == "nvidia":
+        if nvidia_keys:
+            key = nvidia_keys.split(",")[0].strip()
+            return "nvidia", key or None
+        return None, None
+
+    # Fallback/Auto-detect based on available keys
+    if nvidia_keys:
+        key = nvidia_keys.split(",")[0].strip()
+        if key:
+            return "nvidia", key
+
+    if google_key:
+        return "gemini", google_key
+
+    return None, None
+
+
+def _get_vision_api_key() -> str | None:
+    """Helper for backward compatibility or simple key checks."""
+    _, key = _get_vision_provider_and_key()
+    return key
+
+
+def _image_to_base64_png(image: Image.Image) -> str:
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+def _call_vision_model(image: Image.Image, prompt: str, context_name: str) -> str | None:
+    """Call vision model (NVIDIA or Gemini) with an image + prompt."""
+    provider, api_key = _get_vision_provider_and_key()
+    if not provider or not api_key:
+        logger.debug("No API key found for vision extraction (%s)", context_name)
+        return None
+
+    try:
+        from langchain_core.messages import HumanMessage
+
+        img_base64 = _image_to_base64_png(image)
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{img_base64}"},
+                },
+            ]
+        )
+
+        if provider == "nvidia":
+            from langchain_nvidia_ai_endpoints import ChatNVIDIA
+            vision_model = os.getenv("VISION_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1")
+            llm = ChatNVIDIA(
+                model=vision_model,
+                api_key=api_key,
+                temperature=0.0,
+                max_tokens=2048,
+            )
+        elif provider == "gemini":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            vision_model = os.getenv("VISION_MODEL", "")
+            if not vision_model or "gemini" not in vision_model.lower():
+                vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+            llm = ChatGoogleGenerativeAI(
+                model=vision_model,
+                google_api_key=api_key,
+                temperature=0.0,
+            )
+        else:
+            logger.warning("Unsupported vision provider: %s", provider)
+            return None
+
+        result = llm.invoke([message])
+        content = (result.content or "").strip()
+        if content:
+            logger.debug("Vision extraction ok (%s) - chars=%d", context_name, len(content))
+        return content or None
+    except Exception as e:
+        logger.warning("Vision model failed for %s: %s", context_name, e)
+        return None
+
+
+def _merge_extracted_and_vision_text(extracted_text: str, vision_text: str) -> str:
+    """Merge parser/OCR text with vision output while avoiding exact duplication."""
+    extracted = (extracted_text or "").strip()
+    vision = (vision_text or "").strip()
+
+    if not extracted:
+        return vision
+    if not vision:
+        return extracted
+
+    norm_extracted = " ".join(extracted.lower().split())
+    norm_vision = " ".join(vision.lower().split())
+    if norm_vision and norm_vision in norm_extracted:
+        return extracted
+
+    return (
+        f"{extracted}\n\n"
+        "[Vision Augmentation]\n"
+        f"{vision}\n"
+        "[/Vision Augmentation]"
+    )
+
+
+def _extract_document_text_with_vision(image: Image.Image, context_name: str) -> str | None:
+    """Extract rich text from document/chart screenshots via vision LLM."""
+    prompt = (
+        "You are extracting content from a document image for retrieval. "
+        "Return plain text with these sections if present: TITLE, HEADINGS, BODY TEXT, "
+        "TABLES, KEY FIGURES, and SUMMARY. Include exact numbers and important entities. "
+        "If the image has a chart, include chart type, axis labels, and each data point."
+    )
+    return _call_vision_model(image=image, prompt=prompt, context_name=context_name)
+
+
+# ── Chart understanding via Vision LLM ─────────────────────────────────────
+
+
+def _describe_chart_with_vision(image: Image.Image, filename: str) -> str | None:
+    """
+    Use NVIDIA NIM vision model to describe chart data from an image.
+    Returns extracted data description or None if unavailable.
+    """
+    prompt = """Analyze this chart image and extract ALL numerical data. Format your response as:
+
+CHART TYPE: [bar chart/line graph/pie chart/etc.]
+
+TITLE: [chart title if visible]
+
+AXES:
+- X-axis: [label and values/categories]
+- Y-axis: [label and values/range]
+
+DATA:
+[List each data point with exact values. For bar charts: category = value. For line charts: (x, y) pairs.]
+
+SUMMARY: [1-2 sentence summary of what the chart shows]"""
+    return _call_vision_model(image=image, prompt=prompt, context_name=f"chart:{filename}")
+
+
+def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
+    """
+    Render PDF pages to images and extract supplemental text with the vision model.
+
+    Returns: {page_index: vision_text}
+    """
+    if os.getenv("VISION_PDF_ENABLED", "true").lower() != "true":
+        return {}
+    if not _get_vision_api_key():
+        return {}
+
+    import fitz
+
+    page_limit = int(os.getenv("VISION_PDF_PAGE_LIMIT", "0"))
+    zoom = float(os.getenv("VISION_PDF_ZOOM", "1.5"))
+    basename = os.path.basename(file_path)
+
+    vision_by_page: dict[int, str] = {}
+    pdf = fitz.open(file_path)
+    try:
+        total_pages = len(pdf)
+        pages_to_process = total_pages if page_limit <= 0 else min(total_pages, page_limit)
+        logger.info(
+            "Vision PDF extraction - file=%s, pages=%d/%d",
+            basename, pages_to_process, total_pages,
+        )
+
+        for page_idx in range(pages_to_process):
+            try:
+                page = pdf[page_idx]
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+                image = Image.open(io.BytesIO(pix.tobytes("png")))
+                vision_text = _extract_document_text_with_vision(
+                    image=image,
+                    context_name=f"pdf:{basename}:page:{page_idx + 1}",
+                )
+                if vision_text and len(vision_text.strip()) >= 20:
+                    vision_by_page[page_idx] = vision_text.strip()
+            except Exception as e:
+                logger.debug("Vision PDF extraction failed on page %d: %s", page_idx + 1, e)
+                continue
+    finally:
+        pdf.close()
+
+    logger.info(
+        "Vision PDF extraction done - file=%s, pages_augmented=%d",
+        basename, len(vision_by_page),
+    )
+    return vision_by_page
+
+
+def _extract_vision_text_from_docx(file_path: str) -> list[str]:
+    """
+    Extract supplemental text from embedded DOCX images using vision model.
+
+    Returns: list of extracted text blocks (one per image).
+    """
+    if os.getenv("VISION_DOCX_ENABLED", "true").lower() != "true":
+        return []
+    if not _get_vision_api_key():
+        return []
+
+    import docx
+
+    image_limit = int(os.getenv("VISION_DOCX_IMAGE_LIMIT", "10"))
+    basename = os.path.basename(file_path)
+
+    vision_blocks: list[str] = []
+    seen_hashes: set[str] = set()
+
+    try:
+        doc = docx.Document(file_path)
+        image_blobs: list[bytes] = []
+        for rel in doc.part.rels.values():
+            target_ref = str(getattr(rel, "target_ref", ""))
+            if "image" not in target_ref:
+                continue
+            blob = getattr(rel.target_part, "blob", None)
+            if blob:
+                image_blobs.append(blob)
+
+        if image_limit > 0:
+            image_blobs = image_blobs[:image_limit]
+
+        for idx, blob in enumerate(image_blobs):
+            digest = hashlib.sha256(blob).hexdigest()
+            if digest in seen_hashes:
+                continue
+            seen_hashes.add(digest)
+
+            try:
+                image = Image.open(io.BytesIO(blob))
+                vision_text = _extract_document_text_with_vision(
+                    image=image,
+                    context_name=f"docx:{basename}:image:{idx + 1}",
+                )
+                if vision_text and len(vision_text.strip()) >= 20:
+                    vision_blocks.append(vision_text.strip())
+            except Exception as e:
+                logger.debug("Vision DOCX extraction failed on image %d: %s", idx + 1, e)
+                continue
+    except Exception as e:
+        logger.warning("Vision DOCX extraction failed for %s: %s", basename, e)
+        return []
+
+    logger.info(
+        "Vision DOCX extraction done - file=%s, images_augmented=%d",
+        basename, len(vision_blocks),
+    )
+    return vision_blocks
 
 
 # ── Table extraction helpers ─────────────────────────────────────────────
@@ -151,6 +428,10 @@ def _load_pdf(file_path: str) -> list[Document]:
     """
     Load PDF pages as Documents, with tables extracted and formatted as
     markdown table chunks (marked with is_table=True metadata).
+
+    Pages with little/no extractable text (scanned/faxed pages, common in
+    older mortgage documents) are OCR'd via Tesseract as a fallback so
+    they don't silently disappear from retrieval.
     """
     from langchain_community.document_loaders import PyMuPDFLoader
     import fitz
@@ -164,6 +445,12 @@ def _load_pdf(file_path: str) -> list[Document]:
     loader = PyMuPDFLoader(file_path)
     docs = loader.load()
 
+    # OCR fallback for scanned/sparse-text pages
+    docs = apply_ocr_fallback(docs, file_path)
+
+    # Vision augmentation from rendered PDF pages (merged with extracted text)
+    vision_by_page = _extract_vision_text_from_pdf(file_path)
+
     # Remove table text from page content to avoid duplication,
     # and attach table metadata
     for doc in docs:
@@ -171,8 +458,15 @@ def _load_pdf(file_path: str) -> list[Document]:
         if page_idx in tables_by_page:
             # Mark that this page has tables (content still kept for context)
             doc.metadata["has_tables"] = True
+        if page_idx in vision_by_page:
+            doc.page_content = _merge_extracted_and_vision_text(doc.page_content, vision_by_page[page_idx])
+            doc.metadata["vision_augmented"] = True
+            doc.metadata["vision_chars"] = len(vision_by_page[page_idx])
 
-    logger.debug("PDF loaded — pages=%d, pages_with_tables=%d", len(docs), len(tables_by_page))
+    logger.debug(
+        "PDF loaded - pages=%d, pages_with_tables=%d, pages_with_vision=%d",
+        len(docs), len(tables_by_page), len(vision_by_page),
+    )
     return docs
 
 
@@ -183,34 +477,83 @@ def _load_docx(file_path: str) -> list[Document]:
     logger.debug("Loading DOCX: %s", file_path)
     doc = docx.Document(file_path)
     full_text = "\n\n".join(para.text for para in doc.paragraphs if para.text.strip())
-    logger.debug("DOCX loaded — paragraphs=%d, chars=%d", len(doc.paragraphs), len(full_text))
-    return [Document(page_content=full_text, metadata={"source": os.path.basename(file_path)})]
+    vision_blocks = _extract_vision_text_from_docx(file_path)
+    merged_text = _merge_extracted_and_vision_text(full_text, "\n\n".join(vision_blocks))
+    metadata = {
+        "source": os.path.basename(file_path),
+        "vision_augmented": bool(vision_blocks),
+        "vision_blocks": len(vision_blocks),
+    }
+    logger.debug(
+        "DOCX loaded - paragraphs=%d, chars=%d, vision_blocks=%d",
+        len(doc.paragraphs), len(merged_text), len(vision_blocks),
+    )
+    return [Document(page_content=merged_text, metadata=metadata)]
 
 
 def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None) -> dict:
+    import tempfile
+
     if doc_id is None:
         doc_id = str(uuid.uuid4())[:12]
     safe_name = safe_filename(filename)
     ext = os.path.splitext(filename)[1].lower()
     logger.info("Starting ingestion — file=%s, ext=%s, doc_id=%s", filename, ext, doc_id)
 
-    upload_dir = os.getenv("UPLOAD_DIR", "./data/uploaded_pdfs")
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, f"{doc_id}_{safe_name}")
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
-    logger.debug("File saved — path=%s, bytes=%d", file_path, len(file_bytes))
-
     # ── Load document ──────────────────────────────────────────────────
     load_start = time.time()
-    if ext == ".pdf":
-        docs = _load_pdf(file_path)
-        table_docs = _extract_tables_as_docs_pdf(file_path, doc_id, filename)
-    elif ext == ".docx":
-        docs = _load_docx(file_path)
-        table_docs = _extract_tables_as_docs_docx(file_path, doc_id, filename)
+    if ext in [".jpg", ".jpeg", ".png"]:
+        image = Image.open(io.BytesIO(file_bytes))
+
+        # Always use vision model for images to extract chart data
+        # Vision model provides much richer information than OCR alone
+        logger.info("Using vision model for image: %s", filename)
+        chart_description = _describe_chart_with_vision(image, filename)
+
+        if chart_description and len(chart_description.strip()) > 50:
+            docs = [Document(
+                page_content=f"[Image: {filename}]\n{chart_description}",
+                metadata={"source": filename, "is_image": True, "image_type": "chart"},
+            )]
+        else:
+            # Fallback to OCR if vision model fails
+            logger.warning("Vision model failed, falling back to OCR for: %s", filename)
+            ocr_configs = [
+                "--psm 3",   # Fully automatic page segmentation
+                "--psm 6",   # Assume uniform block of text
+                "--psm 11",  # Sparse text without order
+                "--psm 12",  # Sparse text with order
+            ]
+
+            best_text = ""
+            for config in ocr_configs:
+                try:
+                    text = pytesseract.image_to_string(image, config=config)
+                    if len(text.strip()) > len(best_text.strip()):
+                        best_text = text
+                except Exception:
+                    continue
+
+            docs = [Document(
+                page_content=f"[Image: {filename}]\n{best_text}",
+                metadata={"source": filename, "is_image": True, "image_type": "text_document"},
+            )]
+        table_docs = []
     else:
-        raise ValueError(f"Unsupported file type: {ext}")
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        try:
+            if ext == ".pdf":
+                docs = _load_pdf(tmp_path)
+                table_docs = _extract_tables_as_docs_pdf(tmp_path, doc_id, filename)
+            elif ext == ".docx":
+                docs = _load_docx(tmp_path)
+                table_docs = _extract_tables_as_docs_docx(tmp_path, doc_id, filename)
+            else:
+                raise ValueError(f"Unsupported file type: {ext}")
+        finally:
+            os.unlink(tmp_path)
     load_elapsed = time.time() - load_start
     logger.info(
         "Document loaded — pages=%d, table_chunks=%d, elapsed=%.2fs",
@@ -286,6 +629,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 
     store_start = time.time()
     vectorstore.add_documents(documents=documents, metadatas=metadatas, ids=ids)
+    refresh_bm25()
     store_elapsed = time.time() - store_start
     logger.info(
         "Stored in ChromaDB — text_chunks=%d, table_chunks=%d, elapsed=%.2fs, total=%d",
