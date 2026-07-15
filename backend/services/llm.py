@@ -67,12 +67,14 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
         for attempt in range(MAX_RETRIES):
             api_key = km.get_key()
             try:
+                timeout = int(os.getenv("LLM_TIMEOUT", "120"))
                 llm = ChatNVIDIA(
                     model=model,
                     api_key=api_key,
                     temperature=temperature,
                     top_p=top_p,
                     max_tokens=max_tokens,
+                    timeout=timeout,
                 )
                 result = llm._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
                 km.report_success(api_key)
@@ -82,7 +84,17 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
                 km.report_error(api_key, e)
                 err_str = str(e).lower()
                 is_rate_limit = "429" in err_str or "rate limit" in err_str or "too many" in err_str
-                if is_rate_limit and attempt < MAX_RETRIES - 1:
+                is_timeout = "timeout" in err_str or "timed out" in err_str
+                
+                if is_timeout and attempt < MAX_RETRIES - 1:
+                    delay = RETRY_BASE_DELAY * (2 ** attempt)
+                    logger.warning(
+                        "NVIDIA timeout (attempt %d/%d) — retrying in %.1fs",
+                        attempt + 1, MAX_RETRIES, delay,
+                    )
+                    time.sleep(delay)
+                    continue
+                elif is_rate_limit and attempt < MAX_RETRIES - 1:
                     delay = RETRY_BASE_DELAY * (2 ** attempt)
                     logger.warning(
                         "NVIDIA rate limit (attempt %d/%d) — retrying in %.1fs",

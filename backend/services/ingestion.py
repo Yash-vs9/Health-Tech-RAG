@@ -59,11 +59,13 @@ def _call_vision_model(image: Image.Image, prompt: str, context_name: str) -> st
         )
 
         vision_model = os.getenv("VISION_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1")
+        timeout = int(os.getenv("VISION_TIMEOUT", "120"))
         llm = ChatNVIDIA(
             model=vision_model,
             api_key=api_key,
             temperature=0.0,
             max_tokens=2048,
+            timeout=timeout,
         )
 
         result = llm.invoke([message])
@@ -150,6 +152,7 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
 
     page_limit = int(os.getenv("VISION_PDF_PAGE_LIMIT", "0"))
     zoom = float(os.getenv("VISION_PDF_ZOOM", "1.5"))
+    delay_between_pages = float(os.getenv("VISION_DELAY", "2"))
     basename = os.path.basename(file_path)
 
     vision_by_page: dict[int, str] = {}
@@ -173,6 +176,10 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
                 )
                 if vision_text and len(vision_text.strip()) >= 20:
                     vision_by_page[page_idx] = vision_text.strip()
+                
+                # Delay between pages to avoid rate limits
+                if page_idx < pages_to_process - 1 and delay_between_pages > 0:
+                    time.sleep(delay_between_pages)
             except Exception as e:
                 logger.debug("Vision PDF extraction failed on page %d: %s", page_idx + 1, e)
                 continue

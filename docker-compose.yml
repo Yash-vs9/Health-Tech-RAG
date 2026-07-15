@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_API_KEYS=${NVIDIA_API_KEYS}
+      - NVIDIA_MODEL=nvidia/nemotron-nano-9b-v2
+      - HUGGINGFACEHUB_API_TOKEN=${HUGGINGFACEHUB_API_TOKEN}
+      - HF_API_KEYS=${HF_API_KEYS}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_STORAGE_BUCKET=documents
+      - INPUT_GUARDRAILS_ENABLED=true
+      - OUTPUT_GUARDRAILS_ENABLED=true
+      - NEMO_GUARDRAILS_ENABLED=true
+      - RETRIEVER_TOP_K=10
+      - MULTI_QUERY_ENABLED=true
+      - MULTI_QUERY_N=3
+      - RERANK_ENABLED=true
+      - CHUNK_SIZE=1024
+      - CHUNK_OVERLAP=50
+      - VISION_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+      - VISION_TIMEOUT=120
+      - VISION_DELAY=2
+      - VISION_PDF_ENABLED=true
+      - VISION_PDF_PAGE_LIMIT=0
+      - OCR_FALLBACK_ENABLED=true
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  chroma_data:

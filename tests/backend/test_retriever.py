@@ -28,9 +28,9 @@ def test_chunk_key_same_content_same_key():
     assert key1 == key2
 
 
-def test_chunk_key_uses_chunk_id_if_available():
-    """When chunk_id is in metadata, use it directly."""
-    meta = {"doc_id": "guidelines.pdf", "chunk_id": "abc_123"}
+def test_chunk_key_uses_chunk_index_if_available():
+    """When chunk_index is in metadata, use it directly."""
+    meta = {"doc_id": "guidelines.pdf", "chunk_index": 3}
     doc = Document(page_content="Some text", metadata=meta)
     key = _chunk_key(doc, meta)
-    assert key == "guidelines.pdf::abc_123"
+    assert key == "guidelines.pdf::chunk_3"

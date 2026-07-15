@@ -1,0 +1,306 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+  PYTHONPATH: "${{ github.workspace }}/Health-Tech-RAG"
+
+jobs:
+  # 1. Linting & Formatting
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linting tools
+        run: |
+          pip install --upgrade pip
+          pip install ruff black isort flake8
+
+      - name: Run Ruff (linting)
+        run: |
+          cd Health-Tech-RAG
+          ruff check backend/ tests/ --output-format=github || true
+
+      - name: Run Black (format check)
+        run: |
+          cd Health-Tech-RAG
+          black --check backend/ tests/ || true
+
+      - name: Run isort (import sorting check)
+        run: |
+          cd Health-Tech-RAG
+          isort --check-only backend/ tests/ || true
+
+  # 2. Backend Unit Tests (core tests that don't need Supabase)
+  backend-unit-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: Health-Tech-RAG/requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr libtesseract-dev poppler-utils
+
+      - name: Install Python dependencies
+        run: |
+          cd Health-Tech-RAG
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-asyncio httpx
+
+      - name: Run unit tests (core services)
+        run: |
+          cd Health-Tech-RAG
+          python -m pytest tests/backend/test_retriever.py tests/backend/test_ocr_fallback.py tests/backend/test_ingestion_vision_merge.py tests/backend/test_ingestion_vision_providers.py -v --tb=short --cov=backend --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./Health-Tech-RAG/coverage.xml
+          fail_ci_if_error: false
+
+  # 3. Frontend Tests & Build
+  frontend-tests:
+    name: Frontend Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Health-Tech-RAG/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd Health-Tech-RAG/frontend
+          npm ci
+
+      - name: Run linting
+        run: |
+          cd Health-Tech-RAG/frontend
+          npm run lint
+
+      - name: Run type checking
+        run: |
+          cd Health-Tech-RAG/frontend
+          npm run typecheck
+
+      - name: Run tests
+        run: |
+          cd Health-Tech-RAG/frontend
+          npm test -- --coverage --watchAll=false
+
+      - name: Build frontend
+        run: |
+          cd Health-Tech-RAG/frontend
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: Health-Tech-RAG/frontend/dist/
+          retention-days: 7
+
+  # 4. Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run Bandit (Python security)
+        run: |
+          pip install bandit
+          cd Health-Tech-RAG
+          bandit -r backend/ -f json -o bandit-report.json || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: Health-Tech-RAG/bandit-report.json
+
+      - name: Run Safety (dependency vulnerabilities)
+        run: |
+          pip install safety
+          cd Health-Tech-RAG
+          safety check -r requirements.txt --json --output safety-report.json || true
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-security-report
+          path: Health-Tech-RAG/safety-report.json
+
+  # 5. Integration Tests (manual trigger only - requires API keys)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.labels.*.name == 'integration-test'
+    env:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      HUGGINGFACEHUB_API_TOKEN: ${{ secrets.HUGGINGFACEHUB_API_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: Health-Tech-RAG/requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr libtesseract-dev poppler-utils
+
+      - name: Install Python dependencies
+        run: |
+          cd Health-Tech-RAG
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock pytest-asyncio httpx
+
+      - name: Create .env file
+        run: |
+          cd Health-Tech-RAG
+          cat > .env << EOF
+          NVIDIA_API_KEY=${{ env.NVIDIA_API_KEY }}
+          HUGGINGFACEHUB_API_TOKEN=${{ env.HUGGINGFACEHUB_API_TOKEN }}
+          SUPABASE_URL=${{ env.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ env.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_STORAGE_BUCKET=documents
+          INPUT_GUARDRAILS_ENABLED=true
+          OUTPUT_GUARDRAILS_ENABLED=true
+          NEMO_GUARDRAILS_ENABLED=true
+          RETRIEVER_TOP_K=10
+          MULTI_QUERY_ENABLED=true
+          MULTI_QUERY_N=3
+          RERANK_ENABLED=true
+          CHUNK_SIZE=1024
+          CHUNK_OVERLAP=50
+          VISION_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+          VISION_TIMEOUT=120
+          VISION_DELAY=2
+          VISION_PDF_ENABLED=true
+          VISION_PDF_PAGE_LIMIT=5
+          OCR_FALLBACK_ENABLED=true
+          LOG_LEVEL=INFO
+          EOF
+
+      - name: Run integration tests
+        run: |
+          cd Health-Tech-RAG
+          python -m pytest tests/ -v -m "integration or requires_api" --tb=short
+
+  # 6. Docker Build Test
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: |
+          cd Health-Tech-RAG
+          docker build -f Dockerfile.backend -t health-tech-rag-backend:test .
+
+      - name: Build frontend Docker image
+        run: |
+          cd Health-Tech-RAG/frontend
+          docker build -t health-tech-rag-frontend:test .
+
+  # 7. Deploy to Staging (on main branch push)
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [backend-unit-tests, frontend-tests, lint, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add your staging deployment commands here
+          # Example: kubectl apply -f k8s/staging/
+          # Or: docker-compose -f docker-compose.staging.yml up -d
+
+  # 8. Deploy to Production (on version tag)
+  deploy-production:
+    name: Deploy to Production
+    needs: [backend-unit-tests, frontend-tests, lint, security, docker-build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Add your production deployment commands here
+          # Example: kubectl apply -f k8s/production/
+          # Or: docker-compose -f docker-compose.production.yml up -d
