@@ -1,4 +1,4 @@
-"""
+r"""
 OCR fallback for scanned PDF pages — plugs into backend/services/ingestion.py
 
 Why: mortgage docs (appraisals, closing disclosures, old faxed agreements)
@@ -37,6 +37,7 @@ from __future__ import annotations
 import os
 import io
 
+import fitz
 import pytesseract
 from PIL import Image
 from langchain_core.documents import Document
@@ -67,8 +68,6 @@ def needs_ocr(page_text: str) -> bool:
 
 def _ocr_page_image(file_path: str, page_index: int) -> str:
     """Render one PDF page (0-indexed, matches PyMuPDFLoader's metadata['page']) and OCR it."""
-    import fitz  # already a dependency here (used in _extract_tables_from_pdf)
-
     try:
         doc = fitz.open(file_path)
         page = doc[page_index]

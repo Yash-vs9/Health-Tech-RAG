@@ -13,7 +13,7 @@ User Upload (PDF / DOCX / JPG / JPEG / PNG)
          v
     POST /chats/{id}/documents
          |
-         +---> PDF/DOCX ---> PyMuPDF / python-docx ---> Text Splitter (1024/50)
+         +---> PDF/DOCX ---> PyMuPDF/python-docx + Vision augmentation ---> Text Splitter (1024/50)
          |
          +---> Image -----> Vision LLM (chart extraction) ---> Qwen3-Embedding-8B (4096-dim)
                              |
@@ -253,8 +253,8 @@ Open **http://localhost:3000**
 
 | Type | Extension | Method |
 |------|-----------|--------|
-| PDF | `.pdf` | PyMuPDF + OCR fallback |
-| Word | `.docx` | python-docx |
+| PDF | `.pdf` | PyMuPDF + OCR fallback + vision merge |
+| Word | `.docx` | python-docx + vision merge (embedded images) |
 | Image | `.jpg`, `.jpeg`, `.png` | Vision LLM (chart extraction) + OCR fallback |
 
 ### Vision Model (Chart Understanding)
@@ -262,12 +262,23 @@ Open **http://localhost:3000**
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VISION_MODEL` | `nvidia/llama-3.1-nemotron-nano-vl-8b-v1` | NVIDIA NIM vision model for chart/graph extraction |
+| `VISION_PDF_ENABLED` | `true` | Enable vision augmentation for PDF pages |
+| `VISION_PDF_PAGE_LIMIT` | `0` | Number of PDF pages to augment (`0` = all pages) |
+| `VISION_PDF_ZOOM` | `1.5` | Render zoom used before sending PDF pages to vision |
+| `VISION_DOCX_ENABLED` | `true` | Enable vision augmentation for DOCX embedded images |
+| `VISION_DOCX_IMAGE_LIMIT` | `10` | Max DOCX images to send to vision per file |
 
 **How it works:**
 1. All images are sent to the vision LLM first
 2. Vision model extracts: chart type, title, axes, data points, summary
 3. If vision model fails, OCR is used as fallback
 4. Extracted data is embedded and indexed for RAG retrieval
+
+**PDF/DOCX merge behavior:**
+1. Parser text is extracted first (PyMuPDF for PDF, python-docx for DOCX)
+2. Vision model extracts supplemental details from rendered PDF pages and DOCX embedded images
+3. Both outputs are merged in the same chunk content under a `[Vision Augmentation]` block
+4. This improves recall for charts, scanned regions, and layout-heavy content
 
 **Example vision model output:**
 ```

@@ -50,29 +50,10 @@ def get_chat_history(user_id: str, chat_session_id: str) -> list[dict]:
 def build_conversation_context(messages: list[dict], max_turns: int = 5) -> str:
     recent = messages[-(max_turns * 2):]
     lines = []
-    
-    # Calculate feedback summary
-    liked = sum(1 for m in recent if m["role"] == "assistant" and m.get("feedback") == "up")
-    disliked = sum(1 for m in recent if m["role"] == "assistant" and m.get("feedback") == "down")
-    
     for m in recent:
         prefix = "User" if m["role"] == "user" else "Assistant"
-        line = f"{prefix}: {m['content']}"
-        # Include explicit feedback token
-        if m["role"] == "assistant" and m.get("feedback"):
-            if m["feedback"] == "up":
-                line += "\n\n[USER_RATING: POSITIVE - User found this answer helpful. Maintain this style and format.]"
-            else:
-                line += "\n\n[USER_RATING: NEGATIVE - User found this answer unhelpful. Adjust approach: check for missing sources, reduce verbosity, or clarify information.]"
-        lines.append(line)
-    
-    context = "\n\n".join(lines)
-    
-    # Add feedback summary if there's any feedback
-    if liked + disliked > 0:
-        context = f"[CONVERSATION_FEEDBACK_SUMMARY: {liked} liked, {disliked} disliked answers in this conversation]\n\n{context}"
-    
-    return context
+        lines.append(f"{prefix}: {m['content']}")
+    return "\n".join(lines)
 
 def update_message_feedback(
     user_id: str,
