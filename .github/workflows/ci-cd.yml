@@ -122,7 +122,7 @@ jobs:
         run: |
           cd frontend
           if find src -name "*.test.js" -o -name "*.test.jsx" -o -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.js" -o -name "*.spec.jsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" 2>/dev/null | grep -q .; then
-            npm test -- --coverage --watchAll=false
+            npm test -- --watchAll=false
           else
             echo "No test files found, skipping tests"
           fi
