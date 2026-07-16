@@ -254,7 +254,7 @@ jobs:
 
       - name: Build backend Docker image
         run: |
-          docker build -f Dockerfile.backend -t health-tech-rag-backend:test .
+          docker build -f backend/Dockerfile -t health-tech-rag-backend:test backend
 
       - name: Build frontend Docker image
         run: |
