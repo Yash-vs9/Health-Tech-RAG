@@ -250,8 +250,7 @@ jobs:
 
       - name: Build frontend Docker image
         run: |
-          cd frontend
-          docker build -t health-tech-rag-frontend:test .
+          docker build -f frontend/Dockerfile -t health-tech-rag-frontend:test frontend
 
   # 7. Deploy to Staging (on main branch push)
   deploy-staging:
