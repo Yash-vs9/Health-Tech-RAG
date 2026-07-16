@@ -171,20 +171,28 @@ def mock_llm():
 
 
 # Override auth dependency for testing
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def override_auth():
-    """Override the auth dependency for testing."""
+    """Override the auth dependency for testing. NOT autouse — use explicitly."""
     from backend.main import app
     from backend.services.auth_service import get_current_user
-    
+
     def mock_get_current_user():
         return {"id": "test-user-123", "email": "test@example.com"}
-    
+
     app.dependency_overrides[get_current_user] = mock_get_current_user
-    
+
     yield
-    
+
     # Clean up
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def _ensure_auth_overrides_cleared():
+    """Ensure auth overrides are cleared between tests."""
+    from backend.main import app
+    yield
     app.dependency_overrides.clear()
 
 

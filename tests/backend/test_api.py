@@ -1,3 +1,8 @@
+"""
+Tests for core API endpoints.
+"""
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -13,11 +18,19 @@ def test_health_endpoint_returns_ok() -> None:
     assert response.json()['status'] == 'ok'
 
 
-def test_query_endpoint_returns_citations() -> None:
-    response = client.post(
-        '/query',
-        json={'question': 'What are the symptoms of diabetes?', 'doc_ids': []},
-    )
+@patch("backend.main.query_engine.query_rag")
+def test_query_endpoint_returns_citations(mock_query_rag) -> None:
+    mock_query_rag = AsyncMock(return_value={
+        "answer": "The symptoms of diabetes include increased thirst, frequent urination, and fatigue.",
+        "sources": [
+            {"content": "Diabetes symptoms include thirst and urination.", "metadata": {"source": "diabetes.pdf", "page": 1}},
+        ],
+    })
+    with patch("backend.main.query_engine.query_rag", mock_query_rag):
+        response = client.post(
+            '/query',
+            json={'question': 'What are the symptoms of diabetes?', 'doc_ids': []},
+        )
 
     payload = response.json()
     assert response.status_code == 200
@@ -25,11 +38,17 @@ def test_query_endpoint_returns_citations() -> None:
     assert len(payload['sources']) >= 1
 
 
-def test_query_endpoint_refuses_unanswerable_question() -> None:
-    response = client.post(
-        '/query',
-        json={'question': 'What is the capital of France?', 'doc_ids': []},
-    )
+@patch("backend.main.query_engine.query_rag")
+def test_query_endpoint_refuses_unanswerable_question(mock_query_rag) -> None:
+    mock_query_rag = AsyncMock(return_value={
+        "answer": "I don't have that information in the provided documents.",
+        "sources": [],
+    })
+    with patch("backend.main.query_engine.query_rag", mock_query_rag):
+        response = client.post(
+            '/query',
+            json={'question': 'What is the capital of France?', 'doc_ids': []},
+        )
 
     payload = response.json()
     assert response.status_code == 200
