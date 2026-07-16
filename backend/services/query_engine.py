@@ -44,7 +44,13 @@ Rules for mortgage questions:
 1. Carefully read ALL the provided context chunks. The answer may span multiple chunks — piece it together.
 2. Extract exact figures, dates, and names from the context. Do not round numbers.
 3. Never use external knowledge or assumptions. Stay strictly within the provided documents.
-4. Include source citation (document name, page, section) for every fact.
+4. **CITATION FORMAT (MANDATORY):** Every fact MUST be followed by a citation in this exact format:
+   [Source N: filename.pdf, Page X, Section: Section Name]
+   - N = the source number from the context (1-based)
+   - filename.pdf = the document filename from the source metadata
+   - Page X = the page number from the source metadata
+   - Section: Section Name = the section from the source metadata
+   Example: [Source 1: ABC_Bank_Annual_Report_2024_Full.pdf, Page 15, Section: 11. BUSINESS SEGMENT REVIEW]
 5. If you cannot find the answer after thoroughly checking ALL context chunks, reply:
    "I don't have that information in the provided documents."
 6. Do not make up information.
@@ -57,7 +63,7 @@ Answer: Hello! I'm your Mortgage Document Assistant. I can help you find informa
 
 Example 2: Factual Lookup with Citation
 Question: What is the late fee percentage for PNB Housing loan?
-Answer: The late fee is 2% per month on the overdue amount, as stated in the PNB Housing Loan Agreement (Page 14, Section 4.2 - Late Payment Charges).
+Answer: The late fee is 2% per month on the overdue amount [Source 1: PNB_Housing_Loan_Agreement.pdf, Page 14, Section: 4.2 - Late Payment Charges].
 
 Example 3: Refusal
 Question: What is the current RBI repo rate?
@@ -65,7 +71,7 @@ Answer: I don't have that information in the provided documents.
 
 Example 4: Comparison Across Documents
 Question: Which bank charges a lower processing fee — PNB or HDFC?
-Answer: PNB Housing charges a 0.50% processing fee (PNB Housing Annual Report, Page 8, Section: Processing Fee), while HDFC charges 0.75% (HDFC Annual Report, Page 22, Section: Loan Processing Charges). PNB Housing has the lower processing fee.
+Answer: PNB Housing charges a 0.50% processing fee [Source 1: PNB_Housing_Annual_Report.pdf, Page 8, Section: Processing Fee], while HDFC charges 0.75% [Source 2: HDFC_Annual_Report.pdf, Page 22, Section: Loan Processing Charges]. PNB Housing has the lower processing fee.
 
 Example 5: Small Talk
 Question: what can you do?
@@ -230,21 +236,52 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
     # ── Filter sources to only those cited in the answer ─────────────
     cited_indices = set()
 
-    # 1. Match "Source N" pattern
-    for match in re.finditer(r"Source\s+(\d+)", answer, re.IGNORECASE):
-        idx = int(match.group(1)) - 1
-        if 0 <= idx < len(sources):
-            cited_indices.add(idx)
+    # Extract all citations from answer: [Source N: filename.pdf, Page X, Section: ...]
+    citation_pattern = r"\[Source\s+(\d+):\s+([^\],]+),\s*Page\s+(\d+)(?:,\s*Section:\s*([^\]]+))?\]"
+    citations = []
+    for match in re.finditer(citation_pattern, answer, re.IGNORECASE):
+        source_num = int(match.group(1))
+        filename = match.group(2).strip()
+        page = int(match.group(3))
+        section = match.group(4).strip() if match.group(4) else None
+        citations.append({
+            "source_num": source_num,
+            "filename": filename,
+            "page": page,
+            "section": section,
+        })
+        logger.debug("Citation parsed — source_num=%d, filename=%s, page=%d, section=%s", 
+                     source_num, filename, page, section)
 
-    # 2. Match filenames mentioned in the answer (e.g., "ABC_Bank_Annual_Report_2024_Full.pdf")
-    answer_lower = answer.lower()
-    for i, s in enumerate(sources):
-        meta = s.get("metadata", {})
-        filename = meta.get("filename", "")
-        if filename and filename.lower() in answer_lower:
-            cited_indices.add(i)
+    # Match citations to sources by filename + page (not by index!)
+    for citation in citations:
+        for i, s in enumerate(sources):
+            meta = s.get("metadata", {})
+            src_filename = meta.get("filename", "")
+            src_page = meta.get("page_number", meta.get("page"))
+            
+            filename_match = citation["filename"].lower() == src_filename.lower()
+            page_match = str(src_page) == str(citation["page"]) if src_page is not None else False
+            
+            if filename_match and page_match:
+                cited_indices.add(i)
+                logger.debug("Matched citation to source index %d — filename=%s, page=%d", 
+                             i, src_filename, src_page)
+                break
+        else:
+            # Fallback: try just filename match (but ONLY for the specific cited source)
+            for i, s in enumerate(sources):
+                meta = s.get("metadata", {})
+                src_filename = meta.get("filename", "")
+                if citation["filename"].lower() == src_filename.lower():
+                    # Only add if this source's page matches the citation's page OR if it's the only source with this filename
+                    src_page = meta.get("page_number", meta.get("page"))
+                    if str(src_page) == str(citation["page"]) or src_page is None:
+                        cited_indices.add(i)
+                        logger.debug("Fallback filename match — index=%d, filename=%s", i, src_filename)
+                        break
 
-    # 3. Match page numbers mentioned near document references
+    # Match page numbers mentioned near document references (but only if already in cited_indices or filename matches)
     for match in re.finditer(r"[Pp]age\s+(\d+)", answer):
         page_num = int(match.group(1))
         for i, s in enumerate(sources):
@@ -253,15 +290,36 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
             if src_page is not None:
                 try:
                     if int(src_page) == page_num:
-                        cited_indices.add(i)
+                        # Only add if this source's filename was already cited
+                        meta = s.get("metadata", {})
+                        src_filename = meta.get("filename", "")
+                        # Check if any citation mentions this filename
+                        for citation in citations:
+                            if citation["filename"].lower() == src_filename.lower():
+                                cited_indices.add(i)
+                                logger.debug("Page match with cited filename — index=%d, page=%d", i, page_num)
+                                break
                 except (ValueError, TypeError):
                     pass
 
+    logger.info("Cited indices after filtering: %s", cited_indices)
     if cited_indices:
         filtered_sources = [s for i, s in enumerate(sources) if i in cited_indices]
-        # Sort by reranker score (highest first)
+        
+        # Deduplicate by filename + page (keep highest scored chunk per page)
+        seen_pages = {}  # key: (filename, page) -> source
+        for s in filtered_sources:
+            meta = s.get("metadata", {})
+            filename = meta.get("filename", "")
+            page = meta.get("page_number", meta.get("page", "unknown"))
+            key = (filename, page)
+            if key not in seen_pages or s.get("rrf_score", 0) > seen_pages[key].get("rrf_score", 0):
+                seen_pages[key] = s
+        
+        # Convert back to list and sort by score
+        filtered_sources = list(seen_pages.values())
         filtered_sources.sort(key=lambda x: x.get("rrf_score", 0), reverse=True)
-        logger.info("Filtered sources — cited=%d, total=%d", len(filtered_sources), len(sources))
+        logger.info("Filtered sources (deduped by filename+page) — cited=%d, total=%d", len(filtered_sources), len(sources))
     else:
         # No citations found — return top 3 by reranker score
         filtered_sources = sorted(sources, key=lambda x: x.get("rrf_score", 0), reverse=True)[:3]
