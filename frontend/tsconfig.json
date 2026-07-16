@@ -15,13 +15,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["src/**/*", "vite.config.js"],
+  "include": ["src/**/*", "vite.config.js", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
