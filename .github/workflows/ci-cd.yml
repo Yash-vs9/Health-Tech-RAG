@@ -10,7 +10,6 @@ on:
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '20'
-  PYTHONPATH: "${{ github.workspace }}/Health-Tech-RAG"
 
 jobs:
   # 1. Linting & Formatting
@@ -35,17 +34,14 @@ jobs:
 
       - name: Run Ruff (linting)
         run: |
-          cd Health-Tech-RAG
           ruff check backend/ tests/ --output-format=github || true
 
       - name: Run Black (format check)
         run: |
-          cd Health-Tech-RAG
           black --check backend/ tests/ || true
 
       - name: Run isort (import sorting check)
         run: |
-          cd Health-Tech-RAG
           isort --check-only backend/ tests/ || true
 
   # 2. Backend Unit Tests (core tests that don't need Supabase)
@@ -63,7 +59,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-          cache-dependency-path: Health-Tech-RAG/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install system dependencies
         run: |
@@ -72,20 +68,18 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          cd Health-Tech-RAG
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-mock pytest-asyncio httpx
 
       - name: Run unit tests (core services)
         run: |
-          cd Health-Tech-RAG
           python -m pytest tests/backend/test_retriever.py tests/backend/test_ocr_fallback.py tests/backend/test_ingestion_vision_merge.py tests/backend/test_ingestion_vision_providers.py -v --tb=short --cov=backend --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
-          files: ./Health-Tech-RAG/coverage.xml
+          files: ./coverage.xml
           fail_ci_if_error: false
 
   # 3. Frontend Tests & Build
@@ -103,38 +97,38 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: Health-Tech-RAG/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           npm ci
 
       - name: Run linting
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           npm run lint
 
       - name: Run type checking
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           npm run typecheck
 
       - name: Run tests
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           npm test -- --coverage --watchAll=false
 
       - name: Build frontend
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           npm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: Health-Tech-RAG/frontend/dist/
+          path: frontend/dist/
           retention-days: 7
 
   # 4. Security Scanning
@@ -155,26 +149,24 @@ jobs:
       - name: Run Bandit (Python security)
         run: |
           pip install bandit
-          cd Health-Tech-RAG
           bandit -r backend/ -f json -o bandit-report.json || true
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
         with:
           name: bandit-security-report
-          path: Health-Tech-RAG/bandit-report.json
+          path: bandit-report.json
 
       - name: Run Safety (dependency vulnerabilities)
         run: |
           pip install safety
-          cd Health-Tech-RAG
           safety check -r requirements.txt --json --output safety-report.json || true
 
       - name: Upload Safety report
         uses: actions/upload-artifact@v4
         with:
           name: safety-security-report
-          path: Health-Tech-RAG/safety-report.json
+          path: safety-report.json
 
   # 5. Integration Tests (manual trigger only - requires API keys)
   integration-tests:
@@ -198,7 +190,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-          cache-dependency-path: Health-Tech-RAG/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install system dependencies
         run: |
@@ -207,14 +199,12 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          cd Health-Tech-RAG
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-mock pytest-asyncio httpx
 
       - name: Create .env file
         run: |
-          cd Health-Tech-RAG
           cat > .env << EOF
           NVIDIA_API_KEY=${{ env.NVIDIA_API_KEY }}
           HUGGINGFACEHUB_API_TOKEN=${{ env.HUGGINGFACEHUB_API_TOKEN }}
@@ -242,7 +232,6 @@ jobs:
 
       - name: Run integration tests
         run: |
-          cd Health-Tech-RAG
           python -m pytest tests/ -v -m "integration or requires_api" --tb=short
 
   # 6. Docker Build Test
@@ -257,12 +246,11 @@ jobs:
 
       - name: Build backend Docker image
         run: |
-          cd Health-Tech-RAG
           docker build -f Dockerfile.backend -t health-tech-rag-backend:test .
 
       - name: Build frontend Docker image
         run: |
-          cd Health-Tech-RAG/frontend
+          cd frontend
           docker build -t health-tech-rag-frontend:test .
 
   # 7. Deploy to Staging (on main branch push)
