@@ -112,11 +112,7 @@ jobs:
       - name: Run type checking
         run: |
           cd frontend
-          if [ -f "tsconfig.json" ] && find . -name "*.ts" -o -name "*.tsx" | grep -q .; then
-            npm run typecheck
-          else
-            echo "No TypeScript files found, skipping typecheck"
-          fi
+          npm run typecheck
 
       - name: Run tests
         run: |
