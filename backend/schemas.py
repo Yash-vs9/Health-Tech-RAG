@@ -31,6 +31,6 @@ class QueryResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = Field(default="ok", description="API health status")
     version: str = Field(default="1.0.0", description="API version")
-    chromadb: str = Field(default="connected", description="ChromaDB connection status")
+    chromadb: str = Field(default="connected", description="Vector store connection status")
     llm: str = Field(default="ollama", description="LLM provider")
     embeddings: str = Field(default="local", description="Embedding provider")

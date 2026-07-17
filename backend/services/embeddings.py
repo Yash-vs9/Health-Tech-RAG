@@ -17,7 +17,10 @@ RETRY_BASE_DELAY = 2.0
 _RETRYABLE = re.compile(r"429|402|rate limit|too many|depleted|credits|payment required")
 
 
-class LoadBalancedEmbeddings:
+from langchain_core.embeddings import Embeddings
+
+
+class LoadBalancedEmbeddings(Embeddings):
     """
     Wrapper around HuggingFaceEndpointEmbeddings that rotates API keys
     on rate limit errors.

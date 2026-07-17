@@ -46,12 +46,12 @@ async def delete_chat(chat_session_id: str, user: dict = Depends(auth_service.ge
         from backend.services import document_service, vectorstore
         documents = document_service.list_documents(user["id"], chat_session_id)
 
-        # Clean up each document: ChromaDB chunks, Supabase Storage, local PDF
+        # Clean up each document: Qdrant chunks, Supabase Storage, local PDF
         for doc in documents:
             try:
                 vectorstore.delete_by_doc_id(doc["doc_id"])
             except Exception as e:
-                logger.warning("ChromaDB cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
+                logger.warning("Qdrant cleanup failed for doc_id=%s: %s", doc.get("doc_id"), e)
 
             try:
                 if doc.get("storage_path"):

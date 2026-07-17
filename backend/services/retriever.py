@@ -23,11 +23,10 @@ _reranker = None
 
 
 def _build_bm25_index():
-    """Build BM25 index from all documents in ChromaDB."""
+    """Build BM25 index from all documents in Qdrant."""
     global _bm25_index, _bm25_docs, _bm25_count
 
-    collection = vectorstore.get_collection()
-    count = collection.count()
+    count = vectorstore.get_doc_count()
     if count == 0:
         logger.warning("BM25 index build skipped — collection is empty")
         _bm25_index = None
@@ -42,21 +41,31 @@ def _build_bm25_index():
     logger.info("Building BM25 index from %d chunks...", count)
     build_start = time.time()
 
+    client = vectorstore.get_client()
+    name = vectorstore._get_collection_name()
+
     batch_size = 500
     all_docs = []
     all_metas = []
     all_ids = []
     offset = 0
     while offset < count:
-        result = collection.get(
+        result = client.scroll(
+            collection_name=name,
             limit=batch_size,
             offset=offset,
-            include=["documents", "metadatas"],
+            with_payload=True,
+            with_vectors=False,
         )
-        all_docs.extend(result["documents"])
-        all_metas.extend(result["metadatas"])
-        all_ids.extend(result["ids"])
-        offset += batch_size
+        points, next_offset = result
+        for point in points:
+            text = point.payload.pop("text", "")
+            all_docs.append(text)
+            all_metas.append(point.payload)
+            all_ids.append(point.id)
+        if next_offset is None:
+            break
+        offset = next_offset
 
     _bm25_docs = [
         {"id": doc_id, "content": doc, "metadata": meta}
@@ -87,8 +96,7 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
     global _bm25_index, _bm25_docs
 
     # Always check if index needs rebuild (handles deletions)
-    collection = vectorstore.get_collection()
-    if _bm25_index is None or collection.count() != _bm25_count:
+    if _bm25_index is None or vectorstore.get_doc_count() != _bm25_count:
         _build_bm25_index()
     if _bm25_index is None or not _bm25_docs:
         logger.debug("BM25 search skipped — index not available")
@@ -168,21 +176,21 @@ def _rrf_fusion(
 # ---------------------------------------------------------------------------
 
 def _get_multi_query_retriever():
-    """Build a MultiQueryRetriever using our configured LLM and ChromaDB."""
-    collection = vectorstore.get_collection()
-    count = collection.count()
+    """Build a MultiQueryRetriever using our configured LLM and Qdrant."""
+    count = vectorstore.get_doc_count()
     if count == 0:
         return None
 
     from .embeddings import get_embeddings
     embeddings = get_embeddings()
 
-    from langchain_chroma import Chroma
+    from langchain_qdrant import QdrantVectorStore
 
-    vectorstore_lc = Chroma(
+    vectorstore_lc = QdrantVectorStore(
         client=vectorstore.get_client(),
-        collection_name=collection.name,
-        embedding_function=embeddings,
+        collection_name=vectorstore._get_collection_name(),
+        embedding=embeddings,
+        content_payload_key="text",
     )
 
     base_retriever = vectorstore_lc.as_retriever(search_kwargs={"k": 5})
@@ -298,7 +306,7 @@ def hybrid_retrieve(
         query[:60], n_results, doc_ids, use_multi_query,
     )
 
-    # --- Vector search (direct ChromaDB query) ---
+    # --- Vector search (direct Qdrant query) ---
     v_start = time.time()
     v_results = vectorstore.query_documents(query_text=query, n_results=n_results, doc_ids=doc_ids)
     v_elapsed = time.time() - v_start

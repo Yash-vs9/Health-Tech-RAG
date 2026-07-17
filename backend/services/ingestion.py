@@ -598,7 +598,7 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
     refresh_bm25()
     store_elapsed = time.time() - store_start
     logger.info(
-        "Stored in ChromaDB — text_chunks=%d, table_chunks=%d, elapsed=%.2fs, total=%d",
+        "Stored in Qdrant — text_chunks=%d, table_chunks=%d, elapsed=%.2fs, total=%d",
         len(chunks), len(table_docs), store_elapsed, vectorstore.get_doc_count(),
     )
 

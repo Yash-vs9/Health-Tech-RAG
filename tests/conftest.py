@@ -28,6 +28,9 @@ def mock_env_vars():
         "SUPABASE_ANON_KEY": "test-anon-key",
         "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
         "SUPABASE_STORAGE_BUCKET": "documents",
+        "QDRANT_URL": "http://localhost:6333",
+        "QDRANT_API_KEY": "",
+        "QDRANT_COLLECTION": "mortgage_docs_test",
         "INPUT_GUARDRAILS_ENABLED": "true",
         "OUTPUT_GUARDRAILS_ENABLED": "true",
         "NEMO_GUARDRAILS_ENABLED": "true",
@@ -137,14 +140,14 @@ def sample_documents():
 
 @pytest.fixture
 def mock_chromadb():
-    """Mock ChromaDB vectorstore."""
-    with patch("backend.services.vectorstore.get_vectorstore") as mock:
-        vectorstore = MagicMock()
-        vectorstore.similarity_search.return_value = []
-        vectorstore.add_documents = MagicMock()
-        vectorstore.delete = MagicMock()
-        mock.return_value = vectorstore
-        yield vectorstore
+    """Mock Qdrant vectorstore."""
+    with patch("backend.services.vectorstore.get_client") as mock:
+        client = MagicMock()
+        client.search.return_value = []
+        client.upsert = MagicMock()
+        client.delete = MagicMock()
+        mock.return_value = client
+        yield client
 
 
 @pytest.fixture

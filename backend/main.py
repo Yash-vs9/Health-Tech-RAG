@@ -125,7 +125,7 @@ async def query(request: QueryRequest):
 
 @app.post("/reset-collection")
 async def reset_collection(user: dict = Depends(auth_service.get_current_user)):
-    """Delete and recreate ChromaDB collection. Use when switching embedding models."""
+    """Delete and recreate Qdrant collection. Use when switching embedding models."""
     if os.getenv("ALLOW_RESET_COLLECTION", "false").lower() != "true":
         raise HTTPException(status_code=403, detail="Reset collection is disabled")
 

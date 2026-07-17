@@ -1,64 +1,72 @@
 import os
-from typing import Dict, Any
-import chromadb
-from chromadb import Documents, EmbeddingFunction, Embeddings
+import time
+import uuid
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    MatchAny,
+    PayloadSchemaType,
+)
 from backend.logging_config import get_logger
 
 logger = get_logger("backend.vectorstore")
 
-_client: chromadb.ClientAPI | None = None
-_collection: chromadb.Collection | None = None
+EMBEDDING_DIM = 4096
+_UUID_NAMESPACE = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+_client: QdrantClient | None = None
+_collection_name: str | None = None
 
 
-class _Qwen3EmbeddingFunction(EmbeddingFunction):
-    """ChromaDB-compatible embedding function wrapping langchain embeddings."""
-
-    def __init__(self, langchain_embeddings):
-        self._embeddings = langchain_embeddings
-
-    def __call__(self, input: Documents) -> Embeddings:
-        return self._embeddings.embed_documents(list(input))
-
-    @staticmethod
-    def name() -> str:
-        return "qwen3-embedding-8b"
-
-    def get_config(self) -> Dict[str, Any]:
-        return {"model": "Qwen/Qwen3-Embedding-8B"}
-
-    @staticmethod
-    def build_from_config(config: Dict[str, Any]) -> "EmbeddingFunction":
-        from .embeddings import get_embeddings
-        return _Qwen3EmbeddingFunction(get_embeddings())
+def _to_uuid(value: str) -> str:
+    """Convert any string to a deterministic, valid UUID v5."""
+    return str(uuid.uuid5(_UUID_NAMESPACE, value))
 
 
-def get_client() -> chromadb.ClientAPI:
+def _get_collection_name() -> str:
+    global _collection_name
+    if _collection_name is None:
+        _collection_name = os.getenv("QDRANT_COLLECTION", "mortgage_docs")
+    return _collection_name
+
+
+def get_client() -> QdrantClient:
     global _client
     if _client is None:
-        db_path = os.getenv("CHROMA_DB_PATH", "./data/chroma_db")
-        os.makedirs(db_path, exist_ok=True)
-        logger.info("Connecting to ChromaDB — path=%s", db_path)
-        _client = chromadb.PersistentClient(path=db_path)
-        logger.info("ChromaDB connected")
+        url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        api_key = os.getenv("QDRANT_API_KEY", None) or None
+        timeout = int(os.getenv("QDRANT_TIMEOUT", "120"))
+        logger.info("Connecting to Qdrant — url=%s, timeout=%ds", url, timeout)
+        _client = QdrantClient(url=url, api_key=api_key, timeout=timeout)
+        logger.info("Qdrant connected")
     return _client
 
 
-def get_collection() -> chromadb.Collection:
-    global _collection
-    if _collection is None:
-        from .embeddings import get_embeddings
-
-        collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
-        client = get_client()
-        ef = _Qwen3EmbeddingFunction(get_embeddings())
-
-        _collection = client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"},
-            embedding_function=ef,
+def get_collection():
+    client = get_client()
+    name = _get_collection_name()
+    if not client.collection_exists(collection_name=name):
+        client.create_collection(
+            collection_name=name,
+            vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
         )
-        logger.info("Collection ready — name=%s, count=%d", collection_name, _collection.count())
-    return _collection
+        logger.info("Created Qdrant collection — name=%s", name)
+
+    try:
+        client.create_payload_index(
+            collection_name=name,
+            field_name="doc_id",
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
+    except Exception:
+        pass
+
+    return name
 
 
 def add_documents(
@@ -66,21 +74,58 @@ def add_documents(
     metadatas: list[dict],
     ids: list[str],
 ) -> dict:
-    collection = get_collection()
-    batch_size = 100
+    from .embeddings import get_embeddings
+
+    name = get_collection()
+    embeddings_model = get_embeddings()
+    client = get_client()
+    batch_size = int(os.getenv("QDRANT_BATCH_SIZE", "50"))
     total = len(documents)
-    logger.info("Adding %d documents to ChromaDB (batch_size=%d)", total, batch_size)
+    max_retries = 3
+    logger.info("Adding %d documents to Qdrant (batch_size=%d)", total, batch_size)
 
     for start in range(0, total, batch_size):
         end = min(start + batch_size, total)
-        collection.add(
-            documents=documents[start:end],
-            metadatas=metadatas[start:end],
-            ids=ids[start:end],
-        )
-        logger.debug("Batch %d-%d added", start, end)
+        batch_docs = documents[start:end]
+        batch_metas = metadatas[start:end]
+        batch_ids = ids[start:end]
 
-    count = collection.count()
+        vectors = embeddings_model.embed_documents(batch_docs)
+
+        points = []
+        for i, vec in enumerate(vectors):
+            payload = {
+                "text": batch_docs[i],
+                "_string_id": batch_ids[i],
+                "metadata": dict(batch_metas[i]),
+            }
+            payload.update(batch_metas[i])
+            points.append(
+                PointStruct(
+                    id=_to_uuid(batch_ids[i]),
+                    vector=vec,
+                    payload=payload,
+                )
+            )
+
+        for attempt in range(max_retries):
+            try:
+                client.upsert(collection_name=name, points=points)
+                logger.debug("Batch %d-%d added (attempt %d)", start, end, attempt + 1)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = 2 ** attempt
+                    logger.warning(
+                        "Upsert failed (attempt %d/%d) — retrying in %ds: %s",
+                        attempt + 1, max_retries, delay, e,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error("Upsert failed after %d attempts — batch %d-%d: %s", max_retries, start, end, e)
+                    raise
+
+    count = get_doc_count()
     logger.info("Documents added — new_total=%d", count)
     return {"count": count}
 
@@ -90,48 +135,96 @@ def query_documents(
     n_results: int = 5,
     doc_ids: list[str] | None = None,
 ) -> dict:
-    collection = get_collection()
-    where_filter = None
+    from .embeddings import get_embeddings
+
+    name = get_collection()
+    embeddings_model = get_embeddings()
+    client = get_client()
+
+    query_vector = embeddings_model.embed_query(query_text)
+
+    search_filter = None
     if doc_ids:
-        where_filter = {"doc_id": {"$in": doc_ids}}
+        search_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="doc_id",
+                    match=MatchAny(any=doc_ids),
+                )
+            ]
+        )
 
     logger.debug(
-        "ChromaDB query — n=%d, filter=%s, q=%s",
-        n_results, where_filter, query_text[:50],
-    )
-    results = collection.query(
-        query_texts=[query_text],
-        n_results=n_results,
-        where=where_filter,
-        include=["documents", "metadatas", "distances"],
+        "Qdrant query — n=%d, filter=%s, q=%s",
+        n_results, search_filter, query_text[:50],
     )
 
-    hit_count = len(results["documents"][0]) if results["documents"] else 0
-    min_dist = min(results["distances"][0]) if results["distances"] and results["distances"][0] else None
-    max_dist = max(results["distances"][0]) if results["distances"] and results["distances"][0] else None
+    results = client.query_points(
+        collection_name=name,
+        query=query_vector,
+        limit=n_results,
+        query_filter=search_filter,
+        with_payload=True,
+    )
+
+    points = results.points
+    hit_count = len(points)
+    min_score = min(p.score for p in points) if points else None
+    max_score = max(p.score for p in points) if points else None
     logger.debug(
-        "ChromaDB results — hits=%d, min_dist=%.4f, max_dist=%.4f",
-        hit_count, min_dist or 0, max_dist or 0,
+        "Qdrant results — hits=%d, min_score=%.4f, max_score=%.4f",
+        hit_count, min_score or 0, max_score or 0,
     )
 
-    return results
+    documents = []
+    metadatas = []
+    distances = []
+    for hit in points:
+        payload = dict(hit.payload) if hit.payload else {}
+        text = payload.pop("text", "")
+        documents.append(text)
+        metadatas.append(payload)
+        distances.append(1 - hit.score)
+
+    return {
+        "documents": [documents],
+        "metadatas": [metadatas],
+        "distances": [distances],
+    }
 
 
 def get_doc_count() -> int:
-    collection = get_collection()
-    return collection.count()
+    client = get_client()
+    name = _get_collection_name()
+    try:
+        info = client.get_collection(collection_name=name)
+        return info.points_count or 0
+    except Exception:
+        return 0
 
 
 def delete_by_doc_id(doc_id: str) -> int:
     """Delete all chunks for a given doc_id. Returns number of chunks removed."""
-    collection = get_collection()
-    results = collection.get(where={"doc_id": doc_id})
-    if not results["ids"]:
-        logger.debug("No chunks found for doc_id=%s", doc_id)
-        return 0
-    collection.delete(ids=results["ids"])
-    logger.info("Deleted %d chunks for doc_id=%s", len(results["ids"]), doc_id)
-    # Invalidate BM25 cache
+    client = get_client()
+    name = _get_collection_name()
+
+    try:
+        count_before = get_doc_count()
+        client.delete(
+            collection_name=name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(key="doc_id", match=MatchValue(value=doc_id))
+                ]
+            ),
+        )
+        count_after = get_doc_count()
+        deleted = count_before - count_after
+        logger.info("Deleted %d chunks for doc_id=%s", deleted, doc_id)
+    except Exception as e:
+        logger.warning("Delete failed for doc_id=%s: %s", doc_id, e)
+        deleted = 0
+
     try:
         from . import retriever
         retriever._bm25_index = None
@@ -139,21 +232,23 @@ def delete_by_doc_id(doc_id: str) -> int:
         retriever._bm25_count = 0
     except Exception:
         pass
-    return len(results["ids"])
+
+    return deleted
 
 
 def reset_collection() -> None:
     """Delete and recreate the collection."""
-    global _collection, _client
+    global _client, _collection_name
     client = get_client()
-    collection_name = os.getenv("CHROMA_COLLECTION", "mortgage_docs")
+    name = _get_collection_name()
     try:
-        client.delete_collection(collection_name)
-        logger.info("Deleted old collection — name=%s", collection_name)
+        client.delete_collection(collection_name=name)
+        logger.info("Deleted old collection — name=%s", name)
     except Exception:
-        logger.debug("Collection %s did not exist", collection_name)
-    _collection = None
-    _client = None
+        logger.debug("Collection %s did not exist", name)
+
+    _collection_name = None
+
     try:
         from . import retriever
         retriever._bm25_index = None
@@ -161,5 +256,6 @@ def reset_collection() -> None:
         logger.info("BM25 index cleared")
     except Exception:
         pass
+
     get_collection()
-    logger.info("Recreated collection — name=%s", collection_name)
+    logger.info("Recreated collection — name=%s", _get_collection_name())

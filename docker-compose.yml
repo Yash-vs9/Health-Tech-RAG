@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -17,6 +26,10 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_STORAGE_BUCKET=documents
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=mortgage_docs
+      - QDRANT_TIMEOUT=120
+      - QDRANT_BATCH_SIZE=50
       - INPUT_GUARDRAILS_ENABLED=true
       - OUTPUT_GUARDRAILS_ENABLED=true
       - NEMO_GUARDRAILS_ENABLED=true
@@ -35,6 +48,8 @@ services:
       - LOG_LEVEL=INFO
     volumes:
       - ./data:/app/data
+    depends_on:
+      - qdrant
     restart: unless-stopped
 
   frontend:
@@ -48,4 +63,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  chroma_data:
+  qdrant_data:

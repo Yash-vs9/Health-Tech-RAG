@@ -50,7 +50,7 @@ async def upload_document(
         file_size=len(file_bytes),
     )
 
-    # Step 2: Ingest into ChromaDB
+    # Step 2: Ingest into Qdrant
     try:
         result = ingestion.ingest_document(
             file_bytes=file_bytes,
@@ -91,11 +91,11 @@ async def delete_document(chat_session_id: str, document_id: str, user: dict = D
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # Remove vectors from ChromaDB
+    # Remove vectors from Qdrant
     try:
         vectorstore.delete_by_doc_id(row["doc_id"])
     except Exception as e:
-        logger.warning("ChromaDB cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
+        logger.warning("Qdrant cleanup failed — doc_id=%s, error=%s", row["doc_id"], e)
 
     return {"status": "deleted", "doc_id": row["doc_id"]}
 

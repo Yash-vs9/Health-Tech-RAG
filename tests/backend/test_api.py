@@ -1,7 +1,7 @@
 """
 Tests for core API endpoints.
 """
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -11,7 +11,8 @@ from backend.main import app
 client = TestClient(app)
 
 
-def test_health_endpoint_returns_ok() -> None:
+@patch("backend.main.vectorstore.get_doc_count", return_value=42)
+def test_health_endpoint_returns_ok(mock_count) -> None:
     response = client.get('/health')
 
     assert response.status_code == 200
