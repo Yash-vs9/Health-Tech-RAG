@@ -28,3 +28,4 @@ sample_pdf.pdf
 .DS_Store
 Thumbs.db
 tests/evaluation/*.json
+.omo/

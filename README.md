@@ -9,56 +9,70 @@
 
 ```
 User Upload (PDF / DOCX / JPG / JPEG / PNG)
-         |
-         v
-    POST /chats/{id}/documents
-         |
-         +---> PDF/DOCX ---> PyMuPDF/python-docx + Vision augmentation ---> Text Splitter (1024/50)
-         |
-         +---> Image -----> Vision LLM (chart extraction) ---> Qwen3-Embedding-8B (4096-dim)
-                             |
-                             +--> OCR fallback (if vision fails)
-                                                                                     |
-                                                                             +-------+-------+
-                                                                             |               |
-                                                                       ChromaDB         BM25 Index
-                                                                       Vector Store     (Keyword)
-                                                                             |               |
-                                                                             +-------+-------+
-                                                                                     |
-                                                                               Reciprocal Rank
-                                                                                 Fusion (RRF)
-                                                                                     |
-                                                                                     v
-                                                                             Top 10 Fused Results
-                                                                                     |
-                                                                             +-------+-------+
-                                                                             |               |
-                                                                       CrossEncoder    Source
-                                                                       Reranker        Filter
-                                                                             |               |
-                                                                             +-------+-------+
-
-
-User Question ---> Input Guardrails (regex) ---> NeMo Guardrails (LLM)
-                                                          |
-                                                          v
-                                                Hybrid Retrieval (ChromaDB + BM25 + RRF)
-                                                          |
-                                                          v
-                                                CrossEncoder Reranker + Source Filter
-                                                          |
-                                                          v
-                                                LLM (NVIDIA NIM) nemotron-nano-9b-v2
-                                                          |
-                                                          v
-                                                Output Guardrails (regex)
-                                                          |
-                                                          v
-                                                Answer + Cited Sources
-                                                          |
-                                                          v
-                                                React Frontend + PdfViewer
+             |
+             v
+        POST /chats/{id}/documents
+             |
+             +---> PDF/DOCX ---> PyMuPDF/python-docx + Vision augmentation ---+
+             |                                                                |
+             +---> Image -----> Vision LLM (chart extraction) ---------------+
+             |                        |                                      |
+             |                        +--> OCR fallback (if vision fails)    |
+             |                                                                v
+             |                                                        Text Splitter
+             |                                                      (1024 chunk / 50 overlap)
+             |                                                                |
+             |                                                                v
+             |                                                          Text Chunks
+             |                                                                |
+             |                                        +-----------------------+-----------------------+
+             |                                        |                                               |
+             |                                        v                                               v
+             |                              Qwen3-Embedding-8B                                  BM25 Index
+             |                              (4096-dim, embeds every chunk)                       (Keyword — raw text)
+             |                                        |
+             |                                        v
+             |                              Qdrant Cloud (Vector Store — online, hosted)
+             |
+             |         [INGESTION ENDS HERE — everything below is triggered by a chat message, not an upload]
+             |
+    User Question ---> Input Guardrails (regex) ---> NeMo Guardrails (LLM injection/jailbreak)
+                                                              |
+                                                              v
+                                                    Multi-Query Expansion
+                                                  (generate N=3 reformulated queries)
+                                                              |
+                                            +-----------------+-----------------+
+                                            |                                   |
+                                            v                                   v
+                                    Vector Search (Qdrant)              BM25 Search (keyword)
+                                            |                                   |
+                                            +-----------------+-----------------+
+                                                              |
+                                                              v
+                                                    Reciprocal Rank Fusion (RRF)
+                                                              |
+                                                              v
+                                                      Top 10 Fused Results
+                                                              |
+                                            +-----------------+-----------------+
+                                            |                                   |
+                                            v                                   v
+                                  CrossEncoder Reranker                  Source Filter
+                                            |                                   |
+                                            +-----------------+-----------------+
+                                                              |
+                                                              v
+                                            LLM (NVIDIA NIM) nemotron-nano-9b-v2
+                                                              |
+                                                              v
+                                                    Output Guardrails (regex)
+                                                              |
+                                                              v
+                                                    Answer + Cited Sources
+                                                              |
+                                                              v
+                                                    React Frontend + PdfViewer
 ```
 
 ---
@@ -85,8 +99,8 @@ Health-Tech-RAG/
 │       ├── __init__.py
 │       ├── llm.py               # LLM provider (Ollama / Gemini / HuggingFace / NVIDIA)
 │       ├── embeddings.py        # Qwen3-Embedding-8B (4096-dim) via HuggingFace API
-│       ├── vectorstore.py       # ChromaDB integration with embedding function
-│       ├── ingestion.py         # PDF + DOCX + Images → Vision LLM/OCR → chunk → embed → store
+│       ├── vectorstore.py       # Qdrant integration with embedding function
+│       ├── ingestion.py         # PDF + DOCX + Images → Vision LLM/OCR → chunk → embed → store in Qdrant
 │       ├── retriever.py         # Hybrid: BM25 + Vector + Multi-Query + RRF + CrossEncoder
 │       ├── query_engine.py      # RAG: retrieve → rerank → filter sources → LLM → answer
 │       ├── guardrails.py        # Input/Output guardrails + NeMo Guardrails integration
@@ -138,7 +152,7 @@ Health-Tech-RAG/
 │       ├── evaluate.py          # RAGAS evaluation script
 │       └── test_answer_relevancy.py  # Quick metric verification
 ├── data/
-│   └── chroma_db/               # Persistent ChromaDB
+│   └── (vector data lives in Qdrant Cloud, not on local disk)
 ├── requirements.txt
 ├── .env.example
 ├── logs.bat                     # View/tail logs from project directory
@@ -367,7 +381,7 @@ NeMo Guardrails provides LLM-based input safety for detecting injection and jail
 | `/chats` | GET | List all chat sessions |
 | `/chats` | POST | Create new chat session |
 | `/chats/{id}` | PATCH | Rename chat |
-| `/chats/{id}` | DELETE | Delete chat + all documents + ChromaDB chunks + Storage |
+| `/chats/{id}` | DELETE | Delete chat + all documents + Qdrant chunks + Storage |
 
 ### Documents
 
@@ -375,7 +389,7 @@ NeMo Guardrails provides LLM-based input safety for detecting injection and jail
 |----------|--------|-------------|
 | `/chats/{id}/documents` | GET | List documents in chat |
 | `/chats/{id}/documents` | POST | Upload PDF/DOCX/Image → ingest → store |
-| `/chats/{id}/documents/{doc_id}` | DELETE | Delete document (ChromaDB + Storage) |
+| `/chats/{id}/documents/{doc_id}` | DELETE | Delete document (Qdrant + Storage) |
 | `/chats/{id}/documents/{doc_id}/pdf` | GET | Serve PDF or image for in-app viewer |
 
 ### Messages
@@ -392,7 +406,7 @@ NeMo Guardrails provides LLM-based input safety for detecting injection and jail
 | `/health` | GET | Health check + provider info |
 | `/ingest` | POST | Upload and ingest a document |
 | `/query` | POST | RAG query without chat context |
-| `/reset-collection` | POST | Wipe and recreate ChromaDB collection (requires auth + env flag) |
+| `/reset-collection` | POST | Wipe and recreate Qdrant collection (requires auth + env flag) |
 
 ---
 
