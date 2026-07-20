@@ -10,29 +10,36 @@ function handle401() {
   if (onUnauthorized) onUnauthorized();
 }
 
-async function request(method, path, body = null, token = null) {
+async function request(method, path, body = null, token = null, { timeout = 30000 } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const opts = { method, headers };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  const opts = { method, headers, signal: controller.signal };
   if (body) opts.body = JSON.stringify(body);
 
-  const res = await fetch(`${API_BASE}${path}`, opts);
-  if (res.status === 401) {
-    handle401();
-    throw new Error('Session expired');
-  }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    let errorMsg = 'Request failed';
-    if (Array.isArray(err.detail)) {
-      errorMsg = err.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
-    } else if (err.detail) {
-      errorMsg = err.detail;
+  try {
+    const res = await fetch(`${API_BASE}${path}`, opts);
+    if (res.status === 401) {
+      handle401();
+      throw new Error('Session expired');
     }
-    throw new Error(errorMsg);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      let errorMsg = 'Request failed';
+      if (Array.isArray(err.detail)) {
+        errorMsg = err.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+      } else if (err.detail) {
+        errorMsg = err.detail;
+      }
+      throw new Error(errorMsg);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 async function uploadFile(path, file, token) {
@@ -85,6 +92,29 @@ export const api = {
   // Messages
   sendMessage: (token, chatId, question) =>
     request('POST', `/chats/${chatId}/messages`, { chat_session_id: chatId, question }, token),
+  sendMessageLong: async (token, chatId, question) => {
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await request(
+          'POST',
+          `/chats/${chatId}/messages`,
+          { chat_session_id: chatId, question },
+          token,
+          { timeout: 120000 }
+        );
+      } catch (err) {
+        const isTimeout = err.name === 'AbortError';
+        const isLastAttempt = attempt === maxRetries;
+        if ((isTimeout || /504|502|503|Gateway/i.test(err.message)) && !isLastAttempt) {
+          console.warn(`Message request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${err.message}. Retrying...`);
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+  },
   getHistory: (token, chatId) =>
     request('GET', `/chats/${chatId}/messages`, null, token),
   setFeedback: (token, chatId, messageId, feedback) =>

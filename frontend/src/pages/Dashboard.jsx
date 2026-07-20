@@ -139,7 +139,7 @@ export default function Dashboard() {
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
     try {
-      const response = await api.sendMessage(token, activeChat.id, question);
+      const response = await api.sendMessageLong(token, activeChat.id, question);
       const assistantMsg = {
         id: response.id,
         role: "assistant",
