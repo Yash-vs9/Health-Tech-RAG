@@ -40,6 +40,7 @@ import base64
 import hashlib
 import uuid
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from backend.logging_config import get_logger
@@ -177,6 +178,7 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
     """
     Render PDF pages to images and extract supplemental text with the vision model.
 
+    Uses parallel extraction with ThreadPoolExecutor for faster processing.
     Returns: {page_index: vision_text}
     """
     if os.getenv("VISION_PDF_ENABLED", "true").lower() != "true":
@@ -188,7 +190,7 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
 
     page_limit = int(os.getenv("VISION_PDF_PAGE_LIMIT", "0"))
     zoom = float(os.getenv("VISION_PDF_ZOOM", "1.5"))
-    delay_between_pages = float(os.getenv("VISION_DELAY", "2"))
+    max_workers = int(os.getenv("VISION_MAX_WORKERS", "3"))
     basename = os.path.basename(file_path)
 
     vision_by_page: dict[int, str] = {}
@@ -197,11 +199,11 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
         total_pages = len(pdf)
         pages_to_process = total_pages if page_limit <= 0 else min(total_pages, page_limit)
         logger.info(
-            "Vision PDF extraction - file=%s, pages=%d/%d",
-            basename, pages_to_process, total_pages,
+            "Vision PDF extraction - file=%s, pages=%d/%d, workers=%d",
+            basename, pages_to_process, total_pages, max_workers,
         )
 
-        for page_idx in range(pages_to_process):
+        def _extract_page(page_idx: int) -> tuple[int, str | None]:
             try:
                 page = pdf[page_idx]
                 pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
@@ -211,14 +213,17 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
                     context_name=f"pdf:{basename}:page:{page_idx + 1}",
                 )
                 if vision_text and len(vision_text.strip()) >= 20:
-                    vision_by_page[page_idx] = vision_text.strip()
-                
-                # Delay between pages to avoid rate limits
-                if page_idx < pages_to_process - 1 and delay_between_pages > 0:
-                    time.sleep(delay_between_pages)
+                    return (page_idx, vision_text.strip())
             except Exception as e:
                 logger.debug("Vision PDF extraction failed on page %d: %s", page_idx + 1, e)
-                continue
+            return (page_idx, None)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_extract_page, idx): idx for idx in range(pages_to_process)}
+            for future in as_completed(futures):
+                page_idx, text = future.result()
+                if text:
+                    vision_by_page[page_idx] = text
     finally:
         pdf.close()
 
@@ -426,39 +431,30 @@ def _build_table_document(
 # ── Document loaders ─────────────────────────────────────────────────────
 
 
-def _load_pdf(file_path: str) -> list[Document]:
+def _load_pdf(file_path: str) -> tuple[list[Document], dict[int, list[str]]]:
     """
     Load PDF pages as Documents, with tables extracted and formatted as
     markdown table chunks (marked with is_table=True metadata).
 
-    Pages with little/no extractable text (scanned/faxed pages, common in
-    older mortgage documents) are OCR'd via Tesseract as a fallback so
-    they don't silently disappear from retrieval.
+    Returns: (docs, tables_by_page) — tables_by_page is reused by caller
+    to avoid double extraction.
     """
     from langchain_community.document_loaders import PyMuPDFLoader
-    import fitz
 
     logger.debug("Loading PDF: %s", file_path)
 
-    # Extract tables first
     tables_by_page = _extract_tables_from_pdf(file_path)
 
-    # Load text pages
     loader = PyMuPDFLoader(file_path)
     docs = loader.load()
 
-    # OCR fallback for scanned/sparse-text pages
     docs = apply_ocr_fallback(docs, file_path)
 
-    # Vision augmentation from rendered PDF pages (merged with extracted text)
     vision_by_page = _extract_vision_text_from_pdf(file_path)
 
-    # Remove table text from page content to avoid duplication,
-    # and attach table metadata
     for doc in docs:
         page_idx = doc.metadata.get("page", 0)
         if page_idx in tables_by_page:
-            # Mark that this page has tables (content still kept for context)
             doc.metadata["has_tables"] = True
         if page_idx in vision_by_page:
             doc.page_content = _merge_extracted_and_vision_text(doc.page_content, vision_by_page[page_idx])
@@ -469,7 +465,7 @@ def _load_pdf(file_path: str) -> list[Document]:
         "PDF loaded - pages=%d, pages_with_tables=%d, pages_with_vision=%d",
         len(docs), len(tables_by_page), len(vision_by_page),
     )
-    return docs
+    return docs, tables_by_page
 
 
 def _load_docx(file_path: str) -> list[Document]:
@@ -547,8 +543,8 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
             tmp_path = tmp.name
         try:
             if ext == ".pdf":
-                docs = _load_pdf(tmp_path)
-                table_docs = _extract_tables_as_docs_pdf(tmp_path, doc_id, filename)
+                docs, tables_by_page = _load_pdf(tmp_path)
+                table_docs = _build_table_docs_from_pages(tables_by_page, doc_id, filename)
             elif ext == ".docx":
                 docs = _load_docx(tmp_path)
                 table_docs = _extract_tables_as_docs_docx(tmp_path, doc_id, filename)
@@ -650,12 +646,21 @@ def ingest_document(file_bytes: bytes, filename: str, doc_id: str | None = None)
 def _extract_tables_as_docs_pdf(file_path: str, doc_id: str, filename: str) -> list[Document]:
     """Extract PDF tables and return them as individual Documents."""
     tables_by_page = _extract_tables_from_pdf(file_path)
+    return _build_table_docs_from_pages(tables_by_page, doc_id, filename)
+
+
+def _build_table_docs_from_pages(
+    tables_by_page: dict[int, list[str]],
+    doc_id: str,
+    filename: str,
+) -> list[Document]:
+    """Build Document objects from already-extracted table markdown strings."""
     result = []
     for page_idx, page_tables in tables_by_page.items():
         for table_idx, table_md in enumerate(page_tables):
             result.append(_build_table_document(
                 table_md=table_md,
-                source=file_path,
+                source=filename,
                 page_number=page_idx + 1,
                 table_index=table_idx,
                 doc_id=doc_id,
