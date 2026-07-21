@@ -42,7 +42,7 @@ logger = get_logger("backend.query_engine")
 
 # Patterns that indicate greetings / small talk (skip retrieval)
 _GREETING_PATTERN = re.compile(
-    r"^\s*(hi|hello|hey|howdy|good\s*(morning|afternoon|evening|day)"
+    r"^\s*(h+[iy]+|he{1,2}l+o+|howdy|good\s*(morning|afternoon|evening|day)"
     r"|greetings|sup|yo|hola|namaste|what'?s\s*up"
     r"|thanks|thank\s*you|thx|bye|goodbye|see\s*ya|later"
     r"|how\s*are\s*you|what\s*can\s*you\s*do|who\s*are\s*you"
@@ -127,18 +127,7 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
             "blocked": True,
         }
 
-    # ── NeMo input safety check (injection/jailbreak) ─────────────────
-    nemo = get_nemo_guardrails()
-    nemo_blocked = await nemo.check_input(question)
-    if nemo_blocked is not None:
-        logger.warning("Input blocked by NeMo Guardrails")
-        return {
-            "answer": nemo_blocked,
-            "sources": [],
-            "blocked": True,
-        }
-
-    # ── Greeting / small talk short-circuit (skip retrieval) ───────────
+    # ── Greeting / small talk short-circuit (skip retrieval + NeMo) ────
     if _GREETING_PATTERN.match(question):
         logger.info("Greeting detected — skipping retrieval")
         llm = get_llm()
@@ -157,6 +146,17 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
         return {
             "answer": answer,
             "sources": [],
+        }
+
+    # ── NeMo input safety check (injection/jailbreak) ─────────────────
+    nemo = get_nemo_guardrails()
+    nemo_blocked = await nemo.check_input(question)
+    if nemo_blocked is not None:
+        logger.warning("Input blocked by NeMo Guardrails")
+        return {
+            "answer": nemo_blocked,
+            "sources": [],
+            "blocked": True,
         }
 
     use_multi_query = os.getenv("MULTI_QUERY_ENABLED", "true").lower() == "true"
