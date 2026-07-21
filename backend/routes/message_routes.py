@@ -39,10 +39,6 @@ async def send_message(
     prior_messages = message_service.get_chat_history(user["id"], chat_session_id)
     conversation_context = message_service.build_conversation_context(prior_messages)
 
-    # 1. Store the user's question
-    message_service.add_message(chat_session_id, role="user", content=req.question)
-
-    # 2. Run RAG scoped to this chat's documents
     docs = document_service.list_documents(user["id"], chat_session_id)
     doc_ids = [d["doc_id"] for d in docs if d["status"] == "ready"]
 
@@ -53,7 +49,8 @@ async def send_message(
     )
     answer, sources = result["answer"], result["sources"]
 
-    # 3. Store the assistant's answer
+    message_service.add_message(chat_session_id, role="user", content=req.question)
+
     assistant_msg = message_service.add_message(
         chat_session_id, role="assistant", content=answer, sources=sources,
     )

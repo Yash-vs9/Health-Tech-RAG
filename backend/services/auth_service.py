@@ -110,7 +110,7 @@ def refresh_session(refresh_token: str) -> dict:
 def logout(access_token: str) -> None:
     client = get_anon_client()
     try:
-        client.auth.sign_out()
+        client.auth.sign_out({"jwt": access_token})
     except Exception as e:
         logger.warning("Logout error (non-fatal) — error=%s", e)
 

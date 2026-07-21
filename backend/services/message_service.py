@@ -72,7 +72,10 @@ def build_conversation_context(messages: list[dict], max_turns: int = 5) -> str:
     lines = []
     for m in recent:
         prefix = "User" if m["role"] == "user" else "Assistant"
-        lines.append(f"{prefix}: {m['content']}")
+        content = m["content"]
+        if m["role"] == "assistant" and len(content) > 500:
+            content = content[:500] + "..."
+        lines.append(f"{prefix}: {content}")
     return "\n".join(lines)
 
 def update_message_feedback(
