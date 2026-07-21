@@ -1,3 +1,18 @@
+"""
+Auth routes — handles user signup, login, logout, token refresh, and Google OAuth.
+
+Endpoints:
+    POST /auth/signup      - Create account (email + password)
+    POST /auth/login       - Login, returns access + refresh tokens
+    POST /auth/refresh     - Refresh an expired access token
+    GET  /auth/google/url  - Get Google OAuth redirect URL
+    POST /auth/logout      - Invalidate session
+    GET  /auth/me          - Get current user profile
+
+All auth is handled by Supabase. Tokens are JWTs verified via
+auth_service.get_current_user (used as a FastAPI dependency).
+"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query

@@ -1,3 +1,29 @@
+"""
+Qdrant vector store — collection management, upsert, query, delete.
+
+All vector operations go through this module. The collection is auto-created
+on first use with 4096-dim COSINE distance. A payload index on "doc_id"
+enables efficient filtering by document.
+
+Functions:
+    get_client() -> QdrantClient
+    get_collection() -> str               - Ensure collection exists, return name
+    add_documents(docs, metas, ids) -> dict - Batch embed + upsert (with retry)
+    query_documents(query, n_results, doc_ids) -> dict - Semantic search
+    get_doc_count() -> int
+    delete_by_doc_id(doc_id) -> int       - Delete all chunks for a doc
+    reset_collection() -> None            - Delete + recreate collection
+
+Env vars used:
+    QDRANT_URL         - Server URL (default: http://localhost:6333)
+    QDRANT_API_KEY     - For Qdrant Cloud
+    QDRANT_COLLECTION  - Collection name (default: "mortgage_docs")
+    QDRANT_TIMEOUT     - Request timeout (default: 120s)
+    QDRANT_BATCH_SIZE  - Upsert batch size (default: 50)
+
+Chunk ID format: UUID v5 derived from "{doc_id}::chunk_{index}"
+"""
+
 import os
 import time
 import uuid

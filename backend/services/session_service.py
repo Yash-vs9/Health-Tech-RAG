@@ -1,3 +1,20 @@
+"""
+Chat session CRUD — create, list, get, rename, and delete chat sessions.
+
+All operations go through the Supabase admin client and are scoped to a user_id.
+The list endpoint also fetches document counts per session in a single query.
+
+Functions:
+    create_chat_session(user_id, title) -> dict
+    list_chat_sessions(user_id) -> list[dict]
+    get_chat_session(user_id, chat_session_id) -> dict | None
+    rename_chat_session(user_id, chat_session_id, title) -> dict
+    delete_chat_session(user_id, chat_session_id) -> None
+
+Table: chat_sessions (Supabase)
+    id, user_id, title, created_at, updated_at
+"""
+
 from __future__ import annotations
 
 from backend.db.supabase_client import get_admin_client

@@ -1,3 +1,24 @@
+"""
+Pydantic models for auth, chat sessions, documents, and messages.
+
+These schemas define the request/response shapes for the authenticated API.
+They are used by the route handlers and returned to the frontend.
+
+Models:
+    Auth:
+        SignupRequest, LoginRequest, AuthResponse, GoogleOAuthURLResponse,
+        RefreshTokenRequest, UserProfile
+
+    Chat Sessions:
+        CreateChatSessionRequest, ChatSessionResponse, RenameChatSessionRequest
+
+    Documents:
+        DocumentResponse
+
+    Messages:
+        SendMessageRequest, MessageResponse, ChatHistoryResponse, FeedbackRequest
+"""
+
 from __future__ import annotations
 
 from datetime import datetime

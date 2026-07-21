@@ -1,3 +1,29 @@
+"""
+Document metadata and storage management.
+
+Handles the documents table in Supabase and file storage. Document lifecycle:
+    1. create_document_row() -> status=processing
+    2. upload_to_storage() -> stores file in Supabase Storage
+    3. mark_document_ready(num_chunks) -> status=ready
+    4. or mark_document_failed(error) -> status=failed
+
+Functions:
+    create_document_row(user_id, chat_session_id, filename, file_size) -> dict
+    upload_to_storage(user_id, doc_id, filename, file_bytes) -> str
+    mark_document_ready(document_row_id, num_chunks) -> None
+    mark_document_failed(document_row_id, error) -> None
+    list_documents(user_id, chat_session_id) -> list[dict]
+    get_document(user_id, document_id) -> dict
+    delete_document(user_id, document_id) -> dict
+
+Env vars used:
+    SUPABASE_STORAGE_BUCKET - Storage bucket name (default: "documents")
+
+Table: documents (Supabase)
+    id, chat_session_id, user_id, filename, storage_path, file_size_bytes,
+    doc_id, num_chunks, status, uploaded_at
+"""
+
 from __future__ import annotations
 
 import os

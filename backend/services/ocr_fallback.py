@@ -1,35 +1,27 @@
-r"""
-OCR fallback for scanned PDF pages — plugs into backend/services/ingestion.py
+"""
+OCR fallback for scanned PDF pages.
 
-Why: mortgage docs (appraisals, closing disclosures, old faxed agreements)
-are frequently scanned images with no text layer. PyMuPDFLoader returns
-empty/near-empty page_content for those pages, so they silently never
-get embedded/retrieved.
+Mortgage docs (appraisals, closing disclosures, old faxed agreements) are
+frequently scanned images with no text layer. PyMuPDFLoader returns
+empty/near-empty page_content for those pages, so they never get embedded.
 
-Fix: after PyMuPDFLoader loads pages, check each Document's page_content
-length. Any page below a threshold is treated as "likely scanned" — we
-re-render that exact page as an image using fitz (already a dependency
-here, via _extract_tables_from_pdf) and OCR it with Tesseract. No
-pdf2image/Poppler needed, since fitz does the rasterization itself.
+Fix: after PyMuPDF loads pages, check each page's text length. Pages below
+OCR_MIN_CHARS_PER_PAGE are rendered as images via PyMuPDF and OCR'd with
+Tesseract. No Poppler needed — fitz handles the rendering.
 
-Env vars (add to .env / .env.example):
-    OCR_FALLBACK_ENABLED=true
-    OCR_MIN_CHARS_PER_PAGE=40      # below this, page is considered scanned
-    OCR_LANGUAGE=eng
-    OCR_ZOOM=2.0                   # 2.0 ~ 144 DPI, higher = sharper but slower
-    TESSERACT_CMD=                 # Windows only, e.g.
-                                    # C:\Program Files\Tesseract-OCR\tesseract.exe
+Functions:
+    needs_ocr(page_text) -> bool
+    apply_ocr_fallback(docs, file_path) -> list[Document]
 
-System dependency (not pip-installable):
-    Tesseract OCR binary — Windows: https://github.com/UB-Mannheim/tesseract/wiki
-    Linux (Docker/CI):  apt-get install -y tesseract-ocr
-    macOS:               brew install tesseract
-    (No Poppler needed — fitz/PyMuPDF handles rendering.)
+Env vars used:
+    OCR_FALLBACK_ENABLED     - Enable/disable (default: true)
+    OCR_MIN_CHARS_PER_PAGE   - Threshold for "scanned" (default: 40)
+    OCR_LANGUAGE             - Tesseract language (default: "eng")
+    OCR_ZOOM                 - Render zoom factor (default: 2.0 ~ 144 DPI)
+    TESSERACT_CMD            - Path to tesseract binary (Windows only)
 
-Python dependencies (add to requirements.txt):
-    pytesseract
-    Pillow
-    # PyMuPDF (fitz) already required by ingestion.py — no new dep there
+System dependency:
+    Tesseract OCR — apt install tesseract-ocr / brew install tesseract
 """
 
 from __future__ import annotations

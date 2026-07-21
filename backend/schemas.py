@@ -1,3 +1,17 @@
+"""
+Pydantic models for the legacy /ingest and /query endpoints.
+
+These are the original request/response schemas used before auth and chat
+sessions were added. Kept for backward compatibility with the legacy API.
+
+Exports:
+    IngestResponse  - Response after successful document ingestion
+    SourceChunk     - A retrieved chunk with content and metadata
+    QueryRequest    - POST body for /query (question + optional doc_ids)
+    QueryResponse   - Response from /query (answer + source chunks)
+    HealthResponse  - GET /health response (status, version, provider info)
+"""
+
 from pydantic import BaseModel, Field
 from typing import List
 

@@ -1,3 +1,31 @@
+"""
+RAG query pipeline — retrieve, rerank, and generate an answer.
+
+This is the core query engine. It takes a user question, runs it through
+safety guardrails, retrieves relevant chunks via hybrid search, generates
+an answer with citations, and filters sources to only those cited.
+
+Pipeline:
+    1. Input guardrails (regex — injection, jailbreak, harmful)
+    2. NeMo Guardrails (LLM-based — mortgage domain + safety)
+    3. Greeting detection (short-circuit for small talk)
+    4. Multi-query expansion (N=3 reformulated queries)
+    5. Hybrid retrieval (Vector + BM25 + Multi-Query)
+    6. RRF fusion + CrossEncoder reranking
+    7. Build context with citation tags
+    8. LLM call (NVIDIA NIM — meta/llama-3.1-70b-instruct)
+    9. Output guardrails (prompt leakage, length)
+    10. Citation filtering (parse [Source N] tags, match to chunks)
+
+Functions:
+    query_rag(question, doc_ids, conversation_context) -> dict
+        Returns: {"answer": str, "sources": list[dict], "blocked"?: bool}
+
+System prompt:
+    Enforces mortgage-domain-only responses, mandatory citation format:
+    [Source N: filename.pdf, Page X, Section: Section Name]
+"""
+
 from __future__ import annotations
 
 import os

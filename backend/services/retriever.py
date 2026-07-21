@@ -1,3 +1,33 @@
+"""
+Hybrid retrieval engine — BM25 + Vector + Multi-Query + RRF + Reranking.
+
+Combines keyword search (BM25) with semantic search (Qdrant vectors) and
+multi-query expansion (LangChain MultiQueryRetriever). Results are fused
+via Reciprocal Rank Fusion (RRF) and reranked with a CrossEncoder.
+
+Functions:
+    hybrid_retrieve(query, n_results, doc_ids, use_multi_query, multi_query_n)
+        -> list[dict]
+
+    refresh_bm25()  - Invalidate BM25 index (called after ingestion/deletion)
+
+Internal:
+    _build_bm25_index()       - Build BM25 from all Qdrant chunks
+    _bm25_search(query, k)    - Keyword search via BM25Okapi
+    _rrf_fusion(vector, bm25) - Reciprocal Rank Fusion (k=60)
+    _multi_query_retrieve(query, n_results) - LangChain MultiQueryRetriever
+    _rerank(query, hits, top_k) - CrossEncoder reranking
+
+Constants:
+    RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+Env vars used:
+    MULTI_QUERY_ENABLED  - Enable multi-query expansion (default: true)
+    MULTI_QUERY_N        - Number of reformulated queries (default: 3)
+    RETRIEVER_TOP_K      - Chunks to retrieve (default: 10)
+    RERANK_ENABLED       - Enable CrossEncoder reranking (default: true)
+"""
+
 from __future__ import annotations
 
 import os

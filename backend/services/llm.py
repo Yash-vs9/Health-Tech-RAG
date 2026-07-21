@@ -1,3 +1,27 @@
+"""
+Multi-provider LLM wrapper with load balancing.
+
+Supports 4 LLM providers via the LLM_PROVIDER env var:
+    nvidia  - NVIDIA NIM (load-balanced via APIKeyManager)
+    gemini  - Google Gemini
+    hf      - HuggingFace Inference API (load-balanced)
+    ollama  - Local Ollama
+
+Classes:
+    LoadBalancedNVIDIAChat   - NVIDIA NIM with key rotation and retry
+    LoadBalancedHuggingFaceChat - HuggingFace with key rotation and retry
+
+Functions:
+    get_llm() -> BaseChatModel  (singleton, initialized on first call)
+
+Env vars used:
+    LLM_PROVIDER, NVIDIA_API_KEY(S), NVIDIA_MODEL, NVIDIA_TOP_P, NVIDIA_MAX_TOKENS
+    LLM_TEMPERATURE, LLM_TIMEOUT
+    GOOGLE_API_KEY, GEMINI_MODEL
+    HF_LLM_MODEL, HF_LLM_MAX_TOKENS
+    OLLAMA_MODEL, OLLAMA_BASE_URL
+"""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,23 @@
+"""
+Supabase client factory.
+
+Provides two singleton clients:
+    - anon_client: Uses SUPABASE_ANON_KEY, safe for frontend-facing operations
+    - admin_client: Uses SUPABASE_SERVICE_ROLE_KEY, bypasses RLS (backend only)
+
+Both are cached via @lru_cache to avoid repeated initialization.
+
+Env vars used:
+    SUPABASE_URL               - Project URL (required)
+    SUPABASE_ANON_KEY          - Anonymous/public key (required)
+    SUPABASE_SERVICE_ROLE_KEY  - Service role key, backend only (required)
+
+Usage:
+    from backend.db.supabase_client import get_admin_client
+    client = get_admin_client()
+    result = client.table("chat_sessions").select("*").execute()
+"""
+
 from __future__ import annotations
 
 import os

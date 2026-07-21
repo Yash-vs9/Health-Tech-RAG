@@ -1,3 +1,27 @@
+"""
+Load-balanced HuggingFace embeddings — Qwen3-Embedding-8B (4096-dim).
+
+Wraps HuggingFaceEndpointEmbeddings with API key rotation. Each call to
+embed_documents or embed_query gets a fresh key from the key manager.
+On rate limit (429/402), retries with the next key up to MAX_RETRIES.
+
+Classes:
+    LoadBalancedEmbeddings(Embeddings)
+        embed_documents(texts) -> list[list[float]]
+        embed_query(text) -> list[float]
+
+Functions:
+    get_embeddings() -> LoadBalancedEmbeddings  (singleton)
+
+Constants:
+    EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-8B"
+    EMBEDDING_DIM = 4096
+
+Env vars used:
+    HUGGINGFACEHUB_API_TOKEN - Single HF token
+    HF_API_KEYS              - Comma-separated tokens (preferred)
+"""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,19 @@
+"""
+Message routes — send questions, retrieve chat history, and submit feedback.
+
+Endpoints:
+    POST   /chats/{id}/messages                - Send a question, get RAG answer
+    GET    /chats/{id}/messages                - Get chat history + documents
+    PATCH  /chats/{id}/messages/{msg_id}/feedback  - Up/down vote on an answer
+
+Send flow:
+    1. Build conversation context from prior messages (last 5 turns)
+    2. Store the user's question
+    3. Run RAG pipeline scoped to this chat's documents
+    4. Store the assistant's answer with source citations
+    5. Return the answer to the frontend
+"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

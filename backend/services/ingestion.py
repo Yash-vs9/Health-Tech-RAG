@@ -1,3 +1,39 @@
+"""
+Document ingestion pipeline — PDF/DOCX/Image to Qdrant.
+
+This is the core ingestion engine. It takes raw file bytes, extracts text
+via multiple methods (parser, vision LLM, OCR), chunks the content, embeds
+it, and stores it in Qdrant.
+
+Pipeline:
+    1. Load document (PyMuPDF for PDF, python-docx for DOCX, PIL for images)
+    2. Extract tables as separate markdown chunks
+    3. Vision LLM augmentation (PDF pages + DOCX embedded images)
+    4. OCR fallback for scanned pages
+    5. Merge parser + vision + OCR text
+    6. Split into chunks (1024 chars, 50 overlap)
+    7. Embed via Qwen3-Embedding-8B (4096-dim)
+    8. Upsert to Qdrant in batches
+    9. Refresh BM25 index
+
+Functions:
+    ingest_document(file_bytes, filename, doc_id) -> dict
+
+    _load_pdf(file_path) -> list[Document]
+    _load_docx(file_path) -> list[Document]
+    _describe_chart_with_vision(image, filename) -> str | None
+    _extract_vision_text_from_pdf(file_path) -> dict[int, str]
+    _extract_vision_text_from_docx(file_path) -> list[str]
+    _extract_tables_from_pdf(file_path) -> dict[int, list[str]]
+    _extract_tables_from_docx(file_path) -> list[str]
+
+Env vars used:
+    CHUNK_SIZE, CHUNK_OVERLAP
+    VISION_MODEL, VISION_TIMEOUT, VISION_DELAY
+    VISION_PDF_ENABLED, VISION_PDF_PAGE_LIMIT, VISION_PDF_ZOOM
+    VISION_DOCX_ENABLED, VISION_DOCX_IMAGE_LIMIT
+"""
+
 import os
 import io
 import base64

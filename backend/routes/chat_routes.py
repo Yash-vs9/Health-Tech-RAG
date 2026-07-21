@@ -1,3 +1,17 @@
+"""
+Chat session routes — CRUD operations for chat sessions.
+
+Endpoints:
+    POST   /chats           - Create a new chat session
+    GET    /chats           - List all chat sessions (with document counts)
+    GET    /chats/{id}      - Get a single chat session
+    PATCH  /chats/{id}      - Rename a chat session
+    DELETE /chats/{id}      - Delete chat + all its documents + vectors + storage
+
+DELETE cascades: when a chat is deleted, all associated documents are removed
+from Qdrant vectors, Supabase Storage, and the documents table.
+"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

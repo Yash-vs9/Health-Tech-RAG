@@ -1,3 +1,33 @@
+"""
+API key load balancer with round-robin rotation and rate-limit cooldown.
+
+Used by both the NVIDIA LLM provider and HuggingFace embeddings to rotate
+across multiple API keys. When a key hits a 429, it's put into cooldown
+and the next key is used automatically.
+
+Classes:
+    APIKeyManager
+        get_key() -> str         - Get next available key (round-robin)
+        report_success(key)      - Reset failure count
+        report_rate_limit(key)   - Put key into cooldown
+        report_error(key, error) - Handle transient errors
+        get_stats() -> dict      - Usage statistics per key
+
+    KeyState
+        Tracks per-key metrics: last_used, failure_count, cooldown_until
+
+Functions:
+    load_keys_from_env(env_var) -> list[str]
+    get_nvidia_key_manager() -> APIKeyManager  (singleton)
+    get_hf_key_manager() -> APIKeyManager      (singleton)
+
+Env vars used:
+    NVIDIA_API_KEYS / NVIDIA_API_KEY - NVIDIA API keys
+    NVIDIA_KEY_COOLDOWN              - Cooldown seconds (default: 60)
+    HF_API_KEYS / HUGGINGFACEHUB_API_TOKEN - HuggingFace tokens
+    HF_KEY_COOLDOWN                  - Cooldown seconds (default: 60)
+"""
+
 from __future__ import annotations
 
 import os

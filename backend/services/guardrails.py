@@ -1,3 +1,38 @@
+"""
+Input and output guardrails — regex-based + NeMo Guardrails integration.
+
+Two layers of safety:
+    1. Regex guardrails (fast, no LLM call)
+       - InputGuardrails: prompt injection, jailbreak, harmful content
+       - OutputGuardrails: prompt leakage, response length
+
+    2. NeMo Guardrails (LLM-based, mortgage domain restriction)
+       - Uses NVIDIA NIM + rails.co config
+       - Blocks non-mortgage queries, detects injection/jailbreak
+
+Classes:
+    InputGuardrails
+        check(user_input) -> GuardrailResult
+
+    OutputGuardrails
+        check(llm_output) -> GuardrailResult
+        sanitize(llm_output) -> str
+
+    NemoGuardrails
+        async check_input(user_input) -> str | None  (blocked message or None)
+
+Functions:
+    get_input_guardrails() -> InputGuardrails     (singleton)
+    get_output_guardrails() -> OutputGuardrails    (singleton)
+    get_nemo_guardrails() -> NemoGuardrails        (singleton)
+
+Env vars used:
+    INPUT_GUARDRAILS_ENABLED  - Enable regex input checks (default: true)
+    OUTPUT_GUARDRAILS_ENABLED - Enable regex output checks (default: true)
+    NEMO_GUARDRAILS_ENABLED   - Enable NeMo Guardrails (default: true)
+    NVIDIA_API_KEY            - For NeMo (extracted from NVIDIA_API_KEYS if needed)
+"""
+
 from __future__ import annotations
 
 import os

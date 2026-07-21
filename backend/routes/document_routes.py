@@ -1,3 +1,20 @@
+"""
+Document routes — upload, list, delete, and serve documents within a chat session.
+
+Endpoints:
+    POST   /chats/{id}/documents              - Upload and ingest a document
+    GET    /chats/{id}/documents              - List documents in a chat
+    DELETE /chats/{id}/documents/{doc_id}      - Delete document (Qdrant + Storage + DB)
+    GET    /chats/{id}/documents/{doc_id}/pdf  - Serve file for in-app viewer
+
+Upload flow:
+    1. Validate file extension (.pdf, .docx, .jpg, .jpeg, .png) and size
+    2. Create DB row with status=processing
+    3. Ingest into Qdrant (parser + vision + OCR + chunk + embed)
+    4. Upload to Supabase Storage (only on successful ingestion)
+    5. Mark document as ready
+"""
+
 from __future__ import annotations
 
 import os

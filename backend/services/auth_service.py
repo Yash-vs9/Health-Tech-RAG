@@ -1,3 +1,25 @@
+"""
+Authentication service — wraps Supabase Auth for email/password and Google OAuth.
+
+Functions:
+    signup_with_email(email, password, full_name) -> dict
+    login_with_email(email, password) -> dict
+    refresh_session(refresh_token) -> dict
+    logout(access_token) -> None
+    get_google_oauth_url(redirect_to) -> str
+    get_current_user(authorization) -> dict        (FastAPI dependency)
+
+Env vars used:
+    SUPABASE_URL              - Project URL
+    SUPABASE_ANON_KEY         - For signup/login/refresh
+    SUPABASE_SERVICE_ROLE_KEY - For token verification (admin client)
+
+Usage in routes:
+    @router.get("/me")
+    async def me(user: dict = Depends(auth_service.get_current_user)):
+        return user
+"""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,27 @@
+"""
+FastAPI application entrypoint.
+
+Sets up the Mortgage RAG API with CORS, health check, legacy ingest/query
+endpoints, and mounts the auth/chat/document/message routers.
+
+Startup sequence:
+    1. Load .env via python-dotenv
+    2. Initialize logging (console + file)
+    3. Configure CORS (localhost origins + FRONTEND_URL)
+    4. Mount routers: auth, chats, documents, messages
+
+Legacy endpoints (no auth required):
+    GET  /health           - Health check + vector count + LLM provider
+    POST /ingest           - Upload and ingest a document
+    POST /query            - RAG query without chat context
+    POST /reset-collection - Wipe Qdrant collection (requires auth + env flag)
+
+Env vars used:
+    FRONTEND_URL          - Allowed CORS origin
+    LLM_PROVIDER          - Reported in /health response
+    ALLOW_RESET_COLLECTION - Must be "true" + auth to use /reset-collection
+"""
+
 from dotenv import load_dotenv
 load_dotenv()
 

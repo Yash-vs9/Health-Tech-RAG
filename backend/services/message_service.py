@@ -1,3 +1,23 @@
+"""
+Message storage and conversation context builder.
+
+Handles inserting messages into the messages table and building
+conversation history for the LLM prompt.
+
+Functions:
+    add_message(chat_session_id, role, content, sources) -> dict
+    get_chat_history(user_id, chat_session_id) -> list[dict]
+    build_conversation_context(messages, max_turns) -> str
+    update_message_feedback(user_id, chat_session_id, message_id, feedback) -> dict
+
+build_conversation_context() formats the last N turns as:
+    User: <question>
+    Assistant: <answer>
+
+Table: messages (Supabase)
+    id, chat_session_id, role, content, sources (JSONB), feedback, created_at
+"""
+
 from __future__ import annotations
 
 from backend.db.supabase_client import get_admin_client

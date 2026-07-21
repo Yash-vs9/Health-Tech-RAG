@@ -1,3 +1,21 @@
+"""
+Upload utilities — filename sanitization and file size validation.
+
+Functions:
+    safe_filename(filename) -> str
+        Strips path components, null bytes, and special characters.
+        Raises ValueError for invalid filenames.
+
+    get_max_upload_bytes() -> int
+        Returns MAX_UPLOAD_BYTES env var (default: 25MB).
+
+    get_upload_file_size(file) -> int
+        Returns the size of an UploadFile by seeking to end.
+
+Env vars used:
+    MAX_UPLOAD_BYTES - Max upload size in bytes (default: 26214400 = 25MB)
+"""
+
 from __future__ import annotations
 
 import os
