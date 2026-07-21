@@ -1,6 +1,6 @@
 # Mortgage RAG — Evaluation Report
 
-**Date:** 2026-07-09 14:18:02
+**Date:** 2026-07-21 22:39:36
 
 ## Ingested Documents
 
@@ -16,9 +16,9 @@
 
 | Metric | Score | Target | Status |
 |--------|-------|--------|--------|
-| faithfulness | 0.812 | 0.8 | PASS |
-| answer_relevancy | 0.784 | 0.75 | PASS |
-| context_precision | 0.726 | 0.7 | PASS |
+| faithfulness | 0.811 | 0.8 | PASS |
+| answer_relevancy | 0.759 | 0.75 | PASS |
+| context_precision | 0.735 | 0.7 | PASS |
 
 **Overall:** ALL TARGETS MET
 

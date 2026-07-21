@@ -29,3 +29,9 @@ sample_pdf.pdf
 Thumbs.db
 tests/evaluation/*.json
 .omo/
+
+# Deployment files (not pushed to GitHub)
+aws-deployment-kit
+BACKEND_DEPLOYMENT_GUIDE.md
+
+.pytest_cache/

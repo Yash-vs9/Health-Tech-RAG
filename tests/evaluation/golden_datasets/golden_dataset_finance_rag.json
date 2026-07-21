@@ -52,7 +52,7 @@
       "ground_truth_answer": "3.45%",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 9 – Income Statement Analysis",
+      "page_section": "Page 10 – Income Statement Analysis",
       "eval_hint": "Direct extraction"
     },
     {
@@ -62,7 +62,7 @@
       "ground_truth_answer": "1.9%",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 18 – Credit Quality & Impairments",
+      "page_section": "Page 21 – Credit Quality & Impairments",
       "eval_hint": "Direct extraction"
     },
     {
@@ -72,7 +72,7 @@
       "ground_truth_answer": "$0.85 per share",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 7 – Shareholder Returns & Dividends",
+      "page_section": "Page 8 – Shareholder Returns & Dividends",
       "eval_hint": "Direct extraction"
     },
     {
@@ -82,7 +82,7 @@
       "ground_truth_answer": "$12.3 billion",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 11 – Cost & Efficiency Analysis",
+      "page_section": "Page 13 – Cost & Efficiency Analysis",
       "eval_hint": "Direct extraction"
     },
     {
@@ -92,7 +92,7 @@
       "ground_truth_answer": "13.2%",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 16 – Capital Adequacy & Regulatory Capital",
+      "page_section": "Page 19 – Capital Adequacy & Regulatory Capital",
       "eval_hint": "Direct extraction"
     },
     {
@@ -112,7 +112,7 @@
       "ground_truth_answer": "$18.6 billion",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 13 – Business Segment Review",
+      "page_section": "Page 15 – Business Segment Review",
       "eval_hint": "Direct extraction"
     },
     {
@@ -122,7 +122,7 @@
       "ground_truth_answer": "AA- (upgraded in March 2024)",
       "question_type": "Factual",
       "difficulty": "Easy",
-      "page_section": "Page 17 – Credit Ratings & Liquidity Management",
+      "page_section": "Page 20 – Credit Ratings & Liquidity Management",
       "eval_hint": "Direct extraction with date"
     },
     {
@@ -132,7 +132,7 @@
       "ground_truth_answer": "Due to cost efficiency programs and higher lending volumes.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 10 – Profitability & Returns",
+      "page_section": "Page 12 – Profitability & Returns",
       "eval_hint": "Requires reasoning, not just extraction"
     },
     {
@@ -142,7 +142,7 @@
       "ground_truth_answer": "Improved macroeconomic conditions and tighter underwriting standards.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 18 – Credit Quality & Impairments",
+      "page_section": "Page 21 – Credit Quality & Impairments",
       "eval_hint": "Two-part cause inference"
     },
     {
@@ -152,7 +152,7 @@
       "ground_truth_answer": "Customers are increasingly using digital channels for banking transactions.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 20 – Digital Strategy & Technology",
+      "page_section": "Page 23 – Digital Strategy & Technology",
       "eval_hint": "Trend inference"
     },
     {
@@ -162,7 +162,7 @@
       "ground_truth_answer": "ABC Bank is prioritising ESG and sustainable finance as part of its strategy.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 25 – Environmental, Social & Governance",
+      "page_section": "Page 28 – Environmental, Social & Governance",
       "eval_hint": "Strategic inference"
     },
     {
@@ -172,7 +172,7 @@
       "ground_truth_answer": "A global slowdown in merger and acquisition (M&A) activity.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 13 – Business Segment Review",
+      "page_section": "Page 15 – Business Segment Review",
       "eval_hint": "Causal inference"
     },
     {
@@ -182,7 +182,7 @@
       "ground_truth_answer": "ABC Bank became more aggressive in lending relative to deposits held in 2024.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 15 – Balance Sheet & Funding Structure",
+      "page_section": "Page 18 – Balance Sheet & Funding Structure",
       "eval_hint": "Ratio trend inference"
     },
     {
@@ -192,7 +192,7 @@
       "ground_truth_answer": "Anti-money laundering (AML) compliance risk.",
       "question_type": "Inferential",
       "difficulty": "Medium",
-      "page_section": "Page 23 – Legal, Regulatory & Compliance",
+      "page_section": "Page 26 – Legal, Regulatory & Compliance",
       "eval_hint": "Risk category inference"
     },
     {
@@ -202,7 +202,7 @@
       "ground_truth_answer": "Yes, with an LCR of 138%, exceeding the 100% regulatory minimum.",
       "question_type": "Inferential",
       "difficulty": "Easy",
-      "page_section": "Page 17 – Credit Ratings & Liquidity Management",
+      "page_section": "Page 20 – Credit Ratings & Liquidity Management",
       "eval_hint": "Compliance inference"
     },
     {
@@ -212,7 +212,7 @@
       "ground_truth_answer": "Higher central bank policy rates.",
       "question_type": "Inferential",
       "difficulty": "Easy",
-      "page_section": "Page 9 – Income Statement Analysis",
+      "page_section": "Page 10 – Income Statement Analysis",
       "eval_hint": "Single-cause extraction"
     },
     {
@@ -232,7 +232,7 @@
       "ground_truth_answer": "Retail banking, at 48% of total revenue.",
       "question_type": "Comparative",
       "difficulty": "Easy",
-      "page_section": "Page 13 – Business Segment Review",
+      "page_section": "Page 15 – Business Segment Review",
       "eval_hint": "Segment comparison"
     },
     {
@@ -242,7 +242,7 @@
       "ground_truth_answer": "Improved — it decreased from 54% to 49%, indicating better cost efficiency.",
       "question_type": "Comparative",
       "difficulty": "Medium",
-      "page_section": "Page 11 – Cost & Efficiency Analysis",
+      "page_section": "Page 13 – Cost & Efficiency Analysis",
       "eval_hint": "Directional comparison"
     },
     {
@@ -252,7 +252,7 @@
       "ground_truth_answer": "ABC Bank is better capitalised with a CET1 of 13.2% vs XYZ Corp's 11.8%.",
       "question_type": "Comparative",
       "difficulty": "Medium",
-      "page_section": "Page 16 – Capital Adequacy & Regulatory Capital",
+      "page_section": "Page 19 – Capital Adequacy & Regulatory Capital",
       "eval_hint": "Peer comparison"
     },
     {
@@ -262,7 +262,7 @@
       "ground_truth_answer": "Net interest income grew faster (~12.8% growth vs ~2.7% for non-interest income).",
       "question_type": "Comparative",
       "difficulty": "Hard",
-      "page_section": "Page 9 – Income Statement Analysis",
+      "page_section": "Page 10 – Income Statement Analysis",
       "eval_hint": "Requires calculating growth rates"
     },
     {
@@ -272,7 +272,7 @@
       "ground_truth_answer": "2023 retail revenue ≈ $16.8B (18.6/1.11). Retail = 55.5% of 2024 total revenue.",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 13 – Business Segment Review",
+      "page_section": "Page 15 – Business Segment Review",
       "eval_hint": "Two-step calculation required"
     },
     {
@@ -282,7 +282,7 @@
       "ground_truth_answer": "≈ $237.6 billion (13.2% × $1.8 trillion).",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 16 – Capital Adequacy & Regulatory Capital",
+      "page_section": "Page 19 – Capital Adequacy & Regulatory Capital",
       "eval_hint": "Requires reverse-engineering from ratio"
     },
     {
@@ -292,7 +292,7 @@
       "ground_truth_answer": "Yes. Cost-to-income = 12.3/33.5 ≈ 36.7%, well below the 50% target.",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 11 – Cost & Efficiency Analysis",
+      "page_section": "Page 13 – Cost & Efficiency Analysis",
       "eval_hint": "Two-step: calculate then compare to target"
     },
     {
@@ -302,7 +302,7 @@
       "ground_truth_answer": "≈ $18.1 billion (1.9% × $950B).",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 18 – Credit Quality & Impairments",
+      "page_section": "Page 21 – Credit Quality & Impairments",
       "eval_hint": "Ratio-to-value derivation"
     },
     {
@@ -312,7 +312,7 @@
       "ground_truth_answer": "Payout ratio = 3.2/9.4 ≈ 34%. EPS = 9.4B/3.76B ≈ $2.50 per share.",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 7 – Shareholder Returns & Dividends",
+      "page_section": "Page 8 – Shareholder Returns & Dividends",
       "eval_hint": "Multi-step derived metrics"
     },
     {
@@ -322,7 +322,7 @@
       "ground_truth_answer": "≈ $9.24 billion (0.22% × $4.2T) — consistent with the reported $9.4B net profit.",
       "question_type": "Multi-hop",
       "difficulty": "Hard",
-      "page_section": "Page 10 – Profitability & Returns",
+      "page_section": "Page 12 – Profitability & Returns",
       "eval_hint": "Cross-check via two data points"
     },
     {
@@ -332,7 +332,7 @@
       "ground_truth_answer": "≈ 83.9% (2.6/3.1 × 100).",
       "question_type": "Numerical",
       "difficulty": "Medium",
-      "page_section": "Page 15 – Balance Sheet & Funding Structure",
+      "page_section": "Page 18 – Balance Sheet & Funding Structure",
       "eval_hint": "Ratio calculation"
     },
     {
@@ -342,7 +342,7 @@
       "ground_truth_answer": "≈ 15.3% growth ((6.8−5.9)/5.9 × 100).",
       "question_type": "Numerical",
       "difficulty": "Medium",
-      "page_section": "Page 12 – Fee & Non-Interest Income",
+      "page_section": "Page 14 – Fee & Non-Interest Income",
       "eval_hint": "YoY growth calculation"
     },
     {
@@ -352,7 +352,7 @@
       "ground_truth_answer": "≈ 43.9% (5.4/12.3 × 100).",
       "question_type": "Numerical",
       "difficulty": "Medium",
-      "page_section": "Page 11 – Cost & Efficiency Analysis",
+      "page_section": "Page 13 – Cost & Efficiency Analysis",
       "eval_hint": "Percentage-of-total calculation"
     },
     {
@@ -362,7 +362,7 @@
       "ground_truth_answer": "≈ 8.3× (78.4/9.4).",
       "question_type": "Numerical",
       "difficulty": "Hard",
-      "page_section": "Page 7 – Shareholder Returns & Dividends",
+      "page_section": "Page 8 – Shareholder Returns & Dividends",
       "eval_hint": "Valuation multiple derivation"
     },
     {
@@ -372,7 +372,7 @@
       "ground_truth_answer": "≈ 13.6% (245/1,800 × 100).",
       "question_type": "Numerical",
       "difficulty": "Medium",
-      "page_section": "Page 16 – Capital Adequacy & Regulatory Capital",
+      "page_section": "Page 19 – Capital Adequacy & Regulatory Capital",
       "eval_hint": "Ratio derivation from absolutes"
     },
     {
@@ -382,7 +382,7 @@
       "ground_truth_answer": "$90 billion (from $620B to $710B).",
       "question_type": "Numerical",
       "difficulty": "Easy",
-      "page_section": "Page 19 – Wealth Management & Private Banking",
+      "page_section": "Page 22 – Wealth Management & Private Banking",
       "eval_hint": "Simple subtraction"
     },
     {
