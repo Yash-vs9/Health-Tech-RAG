@@ -25,6 +25,7 @@ Env vars used:
 from __future__ import annotations
 
 import os
+import asyncio
 import time
 from typing import Any
 
@@ -62,7 +63,7 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
     @property
     def _identifying_params(self) -> dict:
         return {
-            "model": os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2"),
+            "model": os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct"),
             "provider": "nvidia",
             "load_balanced": True,
         }
@@ -83,7 +84,7 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
 
         km = self._get_key_manager()
         temperature = float(os.getenv("LLM_TEMPERATURE", "0.0"))
-        model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2")
+        model = os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct")
         top_p = float(os.getenv("NVIDIA_TOP_P", "0.95"))
         max_tokens = int(os.getenv("NVIDIA_MAX_TOKENS", "4096"))
 
@@ -136,8 +137,9 @@ class LoadBalancedNVIDIAChat(BaseChatModel):
         run_manager: Any = None,
         **kwargs: Any,
     ) -> ChatResult:
-        # For now, fall back to sync _generate
-        return self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        return await asyncio.to_thread(
+            self._generate, messages, stop=stop, run_manager=run_manager, **kwargs
+        )
 
 
 class LoadBalancedHuggingFaceChat(BaseChatModel):
@@ -233,7 +235,9 @@ class LoadBalancedHuggingFaceChat(BaseChatModel):
         run_manager: Any = None,
         **kwargs: Any,
     ) -> ChatResult:
-        return self._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+        return await asyncio.to_thread(
+            self._generate, messages, stop=stop, run_manager=run_manager, **kwargs
+        )
 
 
 _llm = None
@@ -262,7 +266,7 @@ def get_llm():
         _llm = LoadBalancedNVIDIAChat()
         logger.info(
             "LLM ready — NVIDIA (load-balanced, model=%s)",
-            os.getenv("NVIDIA_MODEL", "nvidia/nemotron-nano-9b-v2"),
+            os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct"),
         )
 
     elif provider == "hf":
