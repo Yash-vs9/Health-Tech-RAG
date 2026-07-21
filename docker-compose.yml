@@ -19,7 +19,7 @@ services:
     environment:
       - NVIDIA_API_KEY=${NVIDIA_API_KEY}
       - NVIDIA_API_KEYS=${NVIDIA_API_KEYS}
-      - NVIDIA_MODEL=nvidia/nemotron-nano-9b-v2
+      - NVIDIA_MODEL=meta/llama-3.1-70b-instruct
       - HUGGINGFACEHUB_API_TOKEN=${HUGGINGFACEHUB_API_TOKEN}
       - HF_API_KEYS=${HF_API_KEYS}
       - SUPABASE_URL=${SUPABASE_URL}
@@ -37,7 +37,7 @@ services:
       - MULTI_QUERY_ENABLED=true
       - MULTI_QUERY_N=3
       - RERANK_ENABLED=true
-      - CHUNK_SIZE=1024
+      - CHUNK_SIZE=512
       - CHUNK_OVERLAP=50
       - VISION_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
       - VISION_TIMEOUT=120
