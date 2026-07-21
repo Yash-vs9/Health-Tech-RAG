@@ -41,8 +41,7 @@ def get_max_upload_bytes() -> int:
 
 
 def get_upload_file_size(file: UploadFile) -> int:
-    current_position = file.file.tell()
     file.file.seek(0, os.SEEK_END)
     size = file.file.tell()
-    file.file.seek(current_position)
+    file.file.seek(0)
     return size

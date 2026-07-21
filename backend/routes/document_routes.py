@@ -43,7 +43,7 @@ async def upload_document(
     original_filename = file.filename or ""
     ext = os.path.splitext(original_filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"Only PDF and DOCX files are accepted. Got: {ext}")
+        raise HTTPException(status_code=400, detail=f"Only PDF, DOCX, JPG, JPEG and PNG files are accepted. Got: {ext}")
 
     if get_upload_file_size(file) > get_max_upload_bytes():
         raise HTTPException(status_code=413, detail="Uploaded file is too large")

@@ -81,7 +81,7 @@ async def health_check():
         return HealthResponse(
             status="ok",
             version="1.0.0",
-            chromadb=f"connected ({count} chunks)",
+            vectorstore=f"connected ({count} chunks)",
             llm=llm_provider,
             embeddings="Qwen3-Embedding-8B",
         )
@@ -90,7 +90,7 @@ async def health_check():
         return HealthResponse(
             status="degraded",
             version="1.0.0",
-            chromadb=f"error: {str(e)}",
+            vectorstore=f"error: {str(e)}",
             llm="unknown",
             embeddings="unknown",
         )
