@@ -48,13 +48,16 @@ logger = get_logger("backend.retriever")
 
 _bm25_index = None
 _bm25_docs: list[dict] = []
-_bm25_count = 0  # tracks collection count when BM25 was last built
+_bm25_count = 0
+_bm25_version = 0
 _reranker = None
+_multi_query_retriever = None
+_multi_query_version = -1
 
 
 def _build_bm25_index():
     """Build BM25 index from all documents in Qdrant."""
-    global _bm25_index, _bm25_docs, _bm25_count
+    global _bm25_index, _bm25_docs, _bm25_count, _bm25_version
 
     count = vectorstore.get_doc_count()
     if count == 0:
@@ -64,8 +67,8 @@ def _build_bm25_index():
         _bm25_count = 0
         return
 
-    # Skip rebuild if count hasn't changed
-    if _bm25_index is not None and count == _bm25_count:
+    version = vectorstore.get_version()
+    if _bm25_index is not None and _bm25_version == version:
         return
 
     logger.info("Building BM25 index from %d chunks...", count)
@@ -114,6 +117,7 @@ def _build_bm25_index():
         tokenized = [nltk.word_tokenize(doc.lower()) for doc in all_docs]
         _bm25_index = BM25Okapi(tokenized)
         _bm25_count = count
+        _bm25_version = version
         elapsed = time.time() - build_start
         logger.info("BM25 index built — docs=%d, elapsed=%.2fs", len(all_docs), elapsed)
     except ImportError:
@@ -126,7 +130,7 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
     global _bm25_index, _bm25_docs
 
     # Always check if index needs rebuild (handles deletions)
-    if _bm25_index is None or vectorstore.get_doc_count() != _bm25_count:
+    if _bm25_index is None or vectorstore.get_version() != _bm25_version:
         _build_bm25_index()
     if _bm25_index is None or not _bm25_docs:
         logger.debug("BM25 search skipped — index not available")
@@ -158,11 +162,12 @@ def _bm25_search(query: str, k: int = 10) -> list[dict]:
 
 
 def refresh_bm25():
-    """Force rebuild BM25 index after ingestion."""
-    global _bm25_index, _bm25_docs
+    """Force rebuild BM25 index and invalidate multi-query cache after ingestion."""
+    global _bm25_index, _bm25_docs, _multi_query_retriever
     _bm25_index = None
     _bm25_docs = []
-    logger.info("BM25 index invalidated — will rebuild on next query")
+    _multi_query_retriever = None
+    logger.info("BM25 index and multi-query cache invalidated")
 
 
 # ---------------------------------------------------------------------------
@@ -206,10 +211,16 @@ def _rrf_fusion(
 # ---------------------------------------------------------------------------
 
 def _get_multi_query_retriever():
-    """Build a MultiQueryRetriever using our configured LLM and Qdrant."""
+    """Build or return cached MultiQueryRetriever."""
+    global _multi_query_retriever, _multi_query_version
+
     count = vectorstore.get_doc_count()
     if count == 0:
         return None
+
+    version = vectorstore.get_version()
+    if _multi_query_retriever is not None and _multi_query_version == version:
+        return _multi_query_retriever
 
     from .embeddings import get_embeddings
     embeddings = get_embeddings()
@@ -226,12 +237,13 @@ def _get_multi_query_retriever():
     base_retriever = vectorstore_lc.as_retriever(search_kwargs={"k": 5})
     llm = get_llm()
 
-    mq_retriever = MultiQueryRetriever.from_llm(
+    _multi_query_retriever = MultiQueryRetriever.from_llm(
         retriever=base_retriever,
         llm=llm,
     )
-    logger.debug("MultiQueryRetriever built")
-    return mq_retriever
+    _multi_query_version = version
+    logger.debug("MultiQueryRetriever built (cached)")
+    return _multi_query_retriever
 
 
 def _multi_query_retrieve(query: str, n_results: int = 10) -> list[dict]:

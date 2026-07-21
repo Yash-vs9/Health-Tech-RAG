@@ -47,6 +47,7 @@ _UUID_NAMESPACE = uuid.UUID("12345678-1234-5678-1234-567812345678")
 
 _client: QdrantClient | None = None
 _collection_name: str | None = None
+_version: int = 0
 
 
 def _to_uuid(value: str) -> str:
@@ -88,6 +89,25 @@ def get_collection():
             collection_name=name,
             field_name="doc_id",
             field_schema=PayloadSchemaType.KEYWORD,
+        )
+    except Exception:
+        pass
+
+    for field in ["filename", "section"]:
+        try:
+            client.create_payload_index(
+                collection_name=name,
+                field_name=field,
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+        except Exception:
+            pass
+
+    try:
+        client.create_payload_index(
+            collection_name=name,
+            field_name="page_number",
+            field_schema=PayloadSchemaType.INTEGER,
         )
     except Exception:
         pass
@@ -152,7 +172,9 @@ def add_documents(
                     raise
 
     count = get_doc_count()
-    logger.info("Documents added — new_total=%d", count)
+    global _version
+    _version += 1
+    logger.info("Documents added — new_total=%d, version=%d", count, _version)
     return {"count": count}
 
 
@@ -229,6 +251,10 @@ def get_doc_count() -> int:
         return 0
 
 
+def get_version() -> int:
+    return _version
+
+
 def delete_by_doc_id(doc_id: str) -> int:
     """Delete all chunks for a given doc_id. Returns number of chunks removed."""
     client = get_client()
@@ -251,20 +277,15 @@ def delete_by_doc_id(doc_id: str) -> int:
         logger.warning("Delete failed for doc_id=%s: %s", doc_id, e)
         deleted = 0
 
-    try:
-        from . import retriever
-        retriever._bm25_index = None
-        retriever._bm25_docs = []
-        retriever._bm25_count = 0
-    except Exception:
-        pass
+    global _version
+    _version += 1
 
     return deleted
 
 
 def reset_collection() -> None:
     """Delete and recreate the collection."""
-    global _client, _collection_name
+    global _client, _collection_name, _version
     client = get_client()
     name = _get_collection_name()
     try:
@@ -274,14 +295,7 @@ def reset_collection() -> None:
         logger.debug("Collection %s did not exist", name)
 
     _collection_name = None
-
-    try:
-        from . import retriever
-        retriever._bm25_index = None
-        retriever._bm25_docs = []
-        logger.info("BM25 index cleared")
-    except Exception:
-        pass
+    _version += 1
 
     get_collection()
     logger.info("Recreated collection — name=%s", _get_collection_name())
