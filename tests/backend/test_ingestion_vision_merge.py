@@ -46,7 +46,7 @@ def test_load_pdf_merges_parser_text_and_vision(
     mock_loader_cls.return_value = mock_loader
     mock_apply_ocr.side_effect = lambda docs, _file_path: docs
 
-    docs = _load_pdf("dummy.pdf")
+    docs, _tables = _load_pdf("dummy.pdf")
 
     assert len(docs) == 1
     assert "Base parser text" in docs[0].page_content

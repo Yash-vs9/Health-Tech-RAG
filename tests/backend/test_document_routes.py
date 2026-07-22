@@ -69,7 +69,7 @@ class TestDocumentRoutes:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         data = response.json()
-        assert "Only PDF and DOCX files are accepted" in data["detail"]
+        assert "Only PDF, DOCX, JPG, JPEG and PNG files are accepted" in data["detail"]
 
     @patch("backend.routes.document_routes.document_service")
     def test_list_documents(self, mock_doc_service, override_auth):
