@@ -2,8 +2,6 @@
 
 > Production-grade Retrieval-Augmented Generation system for mortgage document Q&A, summarization, and cross-document comparison.
 
-**AIforAll Global — International AI Internship | Week 2 — June 2026**
-
 ---
 
 ## Live Deployment
@@ -35,44 +33,66 @@ User Upload (PDF / DOCX / JPG / JPEG / PNG)
              v
         POST /chats/{id}/documents
              |
-             +---> PDF/DOCX ---> PyMuPDF / python-docx ---+
-             |                                              |
-             +---> Image ---------> PIL -------------------+
-             |                            |                 |
-             |                            v                 |
-             |                    Vision LLM (chart/        |
-             |                    table extraction)         |
-             |                            |                 |
-             |                    +-------+-------+         |
-             |                    |               |         |
-             |                    v               v         |
-             |              Success           Fallback      |
-             |                    |               |         |
-             |                    |               v         |
-             |                    |         Tesseract OCR   |
-             |                    |               |         |
-             |                    +-------+-------+         |
-             |                            |                 |
-             +----------------------------+-----------------+
-                                            |
-                                            v
-                                  Merge Text Sources
-                           (parser + vision + OCR output)
-                                            |
-                                            v
-                              Text Splitter (1024 chunk / 50 overlap)
-                                            |
-                                            v
-                                      Text Chunks
-                                            |
-                              +-------------+-------------+
-                              |                           |
-                              v                           v
-                    Qwen3-Embedding-8B              BM25 Index
-                   (4096-dim vectors)            (keyword — raw text)
-                              |
-                              v
-                    Qdrant Cloud (Vector Store)
+             +---> PDF/DOCX ---+---> PyMuPDF / python-docx
+             |                 |            |
+             |                 |            v
+             |                 |     Text Splitter (PyMuPDF text)
+             |                 |            |
+             |                 |            v
+             |                 |      PyMuPDF Chunks
+             |                 |
+             |                 +---> Vision LLM (PDF/DOCX charts/tables)
+             |                              |
+             |                      +-------+-------+
+             |                      |               |
+             |                      v               v
+             |                 Success          Fallback
+             |                      |               |
+             |                      |               v
+             |                      |      Tesseract OCR (PDF/DOCX)
+             |                      |               |
+             |                      +-------+-------+
+             |                              |
+             |                              v
+             |                  Text Splitter (PDF Vision/OCR text)
+             |                              |
+             |                              v
+             |                      PDF Vision Chunks
+             |
+             +---> Image ---> PIL ---> Vision LLM (Image charts/tables)
+                                              |
+                                      +-------+-------+
+                                      |               |
+                                      v               v
+                                 Success          Fallback
+                                      |               |
+                                      |               v
+                                      |      Tesseract OCR (Image)
+                                      |               |
+                                      +-------+-------+
+                                              |
+                                              v
+                                  Text Splitter (Image Vision/OCR text)
+                                              |
+                                              v
+                                      Image Vision Chunks
+
+
+  PyMuPDF Chunks ────┐
+                      │
+  PDF Vision Chunks ──┼──> Merge Chunks (PyMuPDF + PDF Vision + Image Vision)
+                      │                          |
+  Image Vision Chunks ┘                          v
+                                            Text Chunks
+                                                  |
+                                  +---------------+---------------+
+                                  |                               |
+                                  v                               v
+                        Qwen3-Embedding-8B                  BM25 Index
+                       (4096-dim vectors)                (keyword — raw text)
+                                  |
+                                  v
+                        Qdrant Cloud (Vector Store)
 ```
 
 ### Query Pipeline
@@ -141,7 +161,6 @@ User Upload (PDF / DOCX / JPG / JPEG / PNG)
 ```
 
 ---
-
 ## Evaluation Results
 
 The pipeline was evaluated against a golden dataset of **40 questions** using [RAGAS](https://docs.ragas.io/) collection metrics.
@@ -529,4 +548,3 @@ This project was developed as part of the **AIforAll Global — International AI
 
 ---
 
-*AIforAll Global — Mortgage RAG Team — Week 2 — June 2026*
