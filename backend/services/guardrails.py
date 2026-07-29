@@ -308,6 +308,13 @@ class NemoGuardrails:
                         api_key = keys[0]
                         os.environ["NVIDIA_API_KEY"] = api_key
 
+                # NeMo downloads HF models internally — set HF_TOKEN to suppress warning
+                if not os.getenv("HF_TOKEN"):
+                    hf_keys = os.getenv("HF_API_KEYS", "")
+                    first_key = [k.strip() for k in hf_keys.split(",") if k.strip()]
+                    if first_key:
+                        os.environ["HF_TOKEN"] = first_key[0]
+
                 from nemoguardrails import LLMRails, RailsConfig
                 config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config")
                 config = RailsConfig.from_path(config_path)
