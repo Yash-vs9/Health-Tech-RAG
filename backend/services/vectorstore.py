@@ -246,7 +246,7 @@ def get_doc_count() -> int:
     name = _get_collection_name()
     try:
         info = client.get_collection(collection_name=name)
-        return info.points_count or 0
+        return int(info.points_count or 0)
     except Exception:
         return 0
 
