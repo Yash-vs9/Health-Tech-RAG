@@ -59,7 +59,7 @@ def _build_bm25_index():
     """Build BM25 index from all documents in Qdrant."""
     global _bm25_index, _bm25_docs, _bm25_count, _bm25_version
 
-    count = vectorstore.get_doc_count()
+    count = int(vectorstore.get_doc_count())
     if count == 0:
         logger.warning("BM25 index build skipped — collection is empty")
         _bm25_index = None
@@ -98,7 +98,7 @@ def _build_bm25_index():
             all_ids.append(point.id)
         if next_offset is None:
             break
-        offset = next_offset
+        offset = int(next_offset)
 
     _bm25_docs = [
         {"id": doc_id, "content": doc, "metadata": meta}
