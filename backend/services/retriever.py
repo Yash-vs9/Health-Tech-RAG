@@ -81,8 +81,8 @@ def _build_bm25_index():
     all_docs = []
     all_metas = []
     all_ids = []
-    offset = 0
-    while offset < count:
+    offset = None
+    while True:
         result = client.scroll(
             collection_name=name,
             limit=batch_size,
@@ -96,9 +96,9 @@ def _build_bm25_index():
             all_docs.append(text)
             all_metas.append(point.payload)
             all_ids.append(point.id)
-        if next_offset is None:
+        if next_offset is None or not points:
             break
-        offset = int(next_offset)
+        offset = next_offset
 
     _bm25_docs = [
         {"id": doc_id, "content": doc, "metadata": meta}
