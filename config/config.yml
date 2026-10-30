@@ -1,7 +1,7 @@
 models:
   - type: main
     engine: nim
-    model: meta/llama-3.1-70b-instruct
+    model: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
     api_key_env_var: NVIDIA_API_KEY
 
 instructions:

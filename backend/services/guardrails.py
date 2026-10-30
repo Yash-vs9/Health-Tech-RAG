@@ -344,6 +344,7 @@ class NemoGuardrails:
                 response_text = response.get("content", str(response))
             else:
                 response_text = str(response)
+            response_text = strip_reasoning(response_text)
 
             # If NeMo refused the question, return the refusal
             refusal_keywords = [
@@ -361,6 +362,22 @@ class NemoGuardrails:
         except Exception as e:
             logger.warning("NeMo Guardrails input check failed — %s", e)
             return None
+
+
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
+def strip_reasoning(text: str) -> str:
+    """Remove reasoning-model <think> output so it never reaches users or keyword checks."""
+    if not text:
+        return text
+    text = _THINK_BLOCK.sub("", text)
+    # Orphan closing tag (opening tag omitted): keep only what follows it
+    if "</think>" in text.lower():
+        text = re.split(r"</think>", text, flags=re.IGNORECASE)[-1]
+    # Unclosed opening tag (output truncated mid-reasoning): drop the rest
+    text = re.split(r"<think>", text, flags=re.IGNORECASE)[0]
+    return text.strip()
 
 
 _nemo_guardrails: NemoGuardrails | None = None

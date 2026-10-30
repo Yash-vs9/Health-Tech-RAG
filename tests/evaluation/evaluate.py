@@ -250,7 +250,7 @@ def _build_ragas_llm():
     if not api_key:
         raise ValueError("NVIDIA_API_KEY or NVIDIA_API_KEYS not set in .env")
 
-    model = os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct")
+    model = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
 
     client = AsyncOpenAI(
         base_url="https://integrate.api.nvidia.com/v1",

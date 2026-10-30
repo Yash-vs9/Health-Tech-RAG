@@ -19,7 +19,7 @@ services:
     environment:
       - NVIDIA_API_KEY=${NVIDIA_API_KEY}
       - NVIDIA_API_KEYS=${NVIDIA_API_KEYS}
-      - NVIDIA_MODEL=meta/llama-3.1-70b-instruct
+      - NVIDIA_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
       - HUGGINGFACEHUB_API_TOKEN=${HUGGINGFACEHUB_API_TOKEN}
       - HF_API_KEYS=${HF_API_KEYS}
       - SUPABASE_URL=${SUPABASE_URL}

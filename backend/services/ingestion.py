@@ -95,7 +95,7 @@ def _call_vision_model(image: Image.Image, prompt: str, context_name: str) -> st
             ]
         )
 
-        vision_model = os.getenv("VISION_MODEL", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1")
+        vision_model = os.getenv("VISION_MODEL", "nvidia/nemotron-3.5-super-vl-120b-a12b")
         timeout = int(os.getenv("VISION_TIMEOUT", "120"))
         llm = ChatNVIDIA(
             model=vision_model,

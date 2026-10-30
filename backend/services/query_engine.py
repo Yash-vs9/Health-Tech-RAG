@@ -13,7 +13,7 @@ Pipeline:
     5. Hybrid retrieval (Vector + BM25 + Multi-Query)
     6. RRF fusion + CrossEncoder reranking
     7. Build context with citation tags
-    8. LLM call (NVIDIA NIM — meta/llama-3.1-70b-instruct)
+    8. LLM call (NVIDIA NIM — nvidia/nemotron-3-nano-omni-30b-a3b-reasoning)
     9. Output guardrails (prompt leakage, length)
     10. Citation filtering (parse [Source N] tags, match to chunks)
 
@@ -36,7 +36,7 @@ from langchain_core.prompts import PromptTemplate
 from backend.logging_config import get_logger
 from .llm import get_llm
 from .retriever import hybrid_retrieve
-from .guardrails import get_input_guardrails, get_output_guardrails, get_nemo_guardrails
+from .guardrails import get_input_guardrails, get_output_guardrails, get_nemo_guardrails, strip_reasoning
 
 logger = get_logger("backend.query_engine")
 
@@ -142,6 +142,7 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
         llm_elapsed = time.time() - llm_start
         if hasattr(answer, "content"):
             answer = answer.content
+        answer = strip_reasoning(answer)
         logger.info("Greeting response — len=%d, elapsed=%.2fs", len(answer), llm_elapsed)
         return {
             "answer": answer,
@@ -242,6 +243,7 @@ async def query_rag(question: str, doc_ids: list[str] | None = None, conversatio
 
     if hasattr(answer, "content"):
         answer = answer.content
+    answer = strip_reasoning(answer)
 
     # ── Output guardrails ──────────────────────────────────────────────
     output_guard = get_output_guardrails()

@@ -39,10 +39,10 @@ from qdrant_client.models import (
     PayloadSchemaType,
 )
 from backend.logging_config import get_logger
+from .embeddings import EMBEDDING_DIM
 
 logger = get_logger("backend.vectorstore")
 
-EMBEDDING_DIM = 4096
 _UUID_NAMESPACE = uuid.UUID("12345678-1234-5678-1234-567812345678")
 
 _client: QdrantClient | None = None
