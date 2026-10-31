@@ -67,6 +67,23 @@ def _get_vision_api_key() -> str | None:
     return None
 
 
+def _next_vision_api_key() -> str | None:
+    """Next NVIDIA key via the shared round-robin manager (thread-safe, cooldown-aware)."""
+    if not _get_vision_api_key():
+        return None
+    from .api_key_manager import get_nvidia_key_manager
+    return get_nvidia_key_manager().get_key()
+
+
+def _vision_worker_count() -> int:
+    """VISION_MAX_WORKERS if set, else 2 concurrent calls per configured key."""
+    configured = os.getenv("VISION_MAX_WORKERS")
+    if configured:
+        return max(1, int(configured))
+    from .api_key_manager import get_nvidia_key_manager
+    return max(1, 2 * len(get_nvidia_key_manager()._keys))
+
+
 def _image_to_base64_png(image: Image.Image) -> str:
     buf = io.BytesIO()
     image.save(buf, format="PNG")
@@ -75,15 +92,19 @@ def _image_to_base64_png(image: Image.Image) -> str:
 
 def _call_vision_model(image: Image.Image, prompt: str, context_name: str) -> str | None:
     """Call NVIDIA NIM vision model with an image + prompt."""
-    api_key = _get_vision_api_key()
-    if not api_key:
+    if not _get_vision_api_key():
         logger.debug("No NVIDIA API key found for vision extraction (%s)", context_name)
         return None
 
-    try:
-        from langchain_core.messages import HumanMessage
-        from langchain_nvidia_ai_endpoints import ChatNVIDIA
+    from langchain_core.messages import HumanMessage
+    from langchain_nvidia_ai_endpoints import ChatNVIDIA
+    from .api_key_manager import get_nvidia_key_manager
 
+    km = get_nvidia_key_manager()
+    max_attempts = int(os.getenv("VISION_MAX_ATTEMPTS", "3"))
+    last_error: Exception | None = None
+
+    try:
         img_base64 = _image_to_base64_png(image)
         message = HumanMessage(
             content=[
@@ -97,22 +118,37 @@ def _call_vision_model(image: Image.Image, prompt: str, context_name: str) -> st
 
         vision_model = os.getenv("VISION_MODEL", "nvidia/nemotron-3.5-super-vl-120b-a12b")
         timeout = int(os.getenv("VISION_TIMEOUT", "120"))
-        llm = ChatNVIDIA(
-            model=vision_model,
-            api_key=api_key,
-            temperature=0.0,
-            max_tokens=2048,
-            timeout=timeout,
-        )
-
-        result = llm.invoke([message])
-        content = (result.content or "").strip()
-        if content:
-            logger.debug("Vision extraction ok (%s) - chars=%d", context_name, len(content))
-        return content or None
+        for attempt in range(max_attempts):
+            api_key = km.get_key()
+            try:
+                llm = ChatNVIDIA(
+                    model=vision_model,
+                    api_key=api_key,
+                    temperature=0.0,
+                    max_tokens=2048,
+                    timeout=timeout,
+                )
+                result = llm.invoke([message])
+                km.report_success(api_key)
+                content = (result.content or "").strip()
+                if content:
+                    logger.debug(
+                        "Vision extraction ok (%s) - key=%s..., chars=%d",
+                        context_name, api_key[:8], len(content),
+                    )
+                return content or None
+            except Exception as e:
+                last_error = e
+                km.report_error(api_key, e)
+                logger.debug(
+                    "Vision attempt %d/%d failed (%s, key=%s...): %s",
+                    attempt + 1, max_attempts, context_name, api_key[:8], e,
+                )
     except Exception as e:
-        logger.warning("Vision model failed for %s: %s", context_name, e)
-        return None
+        last_error = e
+
+    logger.warning("Vision model failed for %s: %s", context_name, last_error)
+    return None
 
 
 def _merge_extracted_and_vision_text(extracted_text: str, vision_text: str) -> str:
@@ -190,7 +226,7 @@ def _extract_vision_text_from_pdf(file_path: str) -> dict[int, str]:
 
     page_limit = int(os.getenv("VISION_PDF_PAGE_LIMIT", "0"))
     zoom = float(os.getenv("VISION_PDF_ZOOM", "1.5"))
-    max_workers = int(os.getenv("VISION_MAX_WORKERS", "3"))
+    max_workers = _vision_worker_count()
     basename = os.path.basename(file_path)
 
     vision_by_page: dict[int, str] = {}
