@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.BACKEND_API_URL || '';
 let onUnauthorized = null;
 
 export function setOnUnauthorized(callback) {
